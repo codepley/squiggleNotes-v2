@@ -233,10 +233,11 @@ export function Sidebar() {
       {/* ── Header ─── */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h2
-          className="text-base font-semibold text-[#F0EDE6]/90"
+          className="text-3xl font-semibold"
           style={{ fontFamily: 'var(--font-caveat), cursive' }}
         >
-          SquiggleNotes
+          <span className="text-[#F0EDE6]/90">Squiggle</span>
+          <span className="text-[#F5A623]">Notes</span>
         </h2>
       </div>
 
@@ -420,12 +421,12 @@ export function Sidebar() {
 
         {session?.user && (
           <div className="flex items-center justify-between pt-3 mt-1 border-t border-white/[0.04]">
-            <span className="text-[10px] uppercase font-medium tracking-widest text-[#F0EDE6]/30">
+            <span className="text-sm uppercase font-medium tracking-widest text-[#F0EDE6]/30">
               {session.user.name?.split(' ')[0]}
             </span>
             <button
               onClick={() => signOut({ callbackUrl: '/' })}
-              className="text-[10px] text-[#F0EDE6]/30 hover:text-[#FF453A] transition-colors"
+              className="text-sm text-[#F0EDE6]/30 hover:text-[#F5A623] transition-colors"
             >
               Sign out
             </button>

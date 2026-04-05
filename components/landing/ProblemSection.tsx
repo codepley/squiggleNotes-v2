@@ -30,7 +30,7 @@ export function ProblemSection() {
             className="text-3xl md:text-5xl font-normal text-[#F0EDE6]/90"
             style={{ fontFamily: 'var(--font-display), serif' }}
           >
-            You took notes. <span className="text-[#FF453A]">But do you remember what they meant?</span>
+            You took notes. <span className="text-[#F5A623]">But do you remember what they meant?</span>
           </h2>
         </motion.div>
 
