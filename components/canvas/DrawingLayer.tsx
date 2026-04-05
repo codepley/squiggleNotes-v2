@@ -15,7 +15,7 @@ export function DrawingLayer() {
   const currentPointsRef = useRef<StrokePoint[]>([]);
 
   const { activeTool, activeColor, strokeWidth } = useNoteStore();
-  const { canvasData, addStroke, eraseStrokesInArea } = useCanvas();
+  const { canvasData, addStroke, eraseStrokesInArea, undo, redo } = useCanvas();
 
   // ─── Re-render all strokes onto the canvas ──────────────────────────────────
   const redrawAll = useCallback(() => {
@@ -89,6 +89,30 @@ export function DrawingLayer() {
     resizeObserver.observe(parent);
     return () => resizeObserver.disconnect();
   }, [redrawAll]);
+
+  // ─── Keyboard shortcuts for undo/redo ───────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z (Windows/Linux) or Cmd+Z (Mac) for undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      // Ctrl+Shift+Z (Windows/Linux) or Cmd+Shift+Z (Mac) for redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        redo();
+      }
+      // Also support Ctrl+Y for redo (Windows convention)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
 
   // ─── Drawing: live stroke preview ───────────────────────────────────────────
   const drawLiveStroke = useCallback(

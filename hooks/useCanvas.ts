@@ -40,7 +40,9 @@ export function useCanvas() {
   const redo = useCallback(() => {
     if (redoStack.current.length === 0) return;
     const next = redoStack.current.pop()!;
-    if (canvasData) undoStack.current.push(canvasData);
+    if (canvasData) {
+      undoStack.current = [...undoStack.current.slice(-MAX_UNDO_STACK + 1), canvasData];
+    }
     updateCanvasData(() => next);
     markDirty();
   }, [canvasData, updateCanvasData, markDirty]);
@@ -86,13 +88,14 @@ export function useCanvas() {
 
   const updateTextBlock = useCallback(
     (id: string, content: string) => {
+      snapshot();
       updateCanvasData((prev) => ({
         ...prev,
         textBlocks: prev.textBlocks.map((b) => (b.id === id ? { ...b, content } : b)),
       }));
       markDirty();
     },
-    [updateCanvasData, markDirty],
+    [snapshot, updateCanvasData, markDirty],
   );
 
   const removeTextBlock = useCallback(
@@ -109,6 +112,7 @@ export function useCanvas() {
 
   const eraseStrokesInArea = useCallback(
     (x: number, y: number, radius: number) => {
+      snapshot();
       updateCanvasData((prev) => ({
         ...prev,
         strokes: prev.strokes.filter((s) =>
@@ -119,7 +123,7 @@ export function useCanvas() {
       }));
       markDirty();
     },
-    [updateCanvasData, markDirty],
+    [snapshot, updateCanvasData, markDirty],
   );
 
   const canUndo = undoStack.current.length > 0;
