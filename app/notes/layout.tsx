@@ -1,13 +1,17 @@
 /**
  * Notes layout — wraps all /notes/* routes with the app shell.
- * Sidebar + main panel structure.
+ * Sidebar + main panel + revision notification banner.
  */
 
 import { Sidebar } from '@/components/sidebar/Sidebar';
+import { RevisionBanner } from '@/components/revision/RevisionBanner';
 
 export default function NotesLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-[#0E0E0F]">
+      {/* Revision due banner */}
+      <RevisionBanner />
+
       {/* Sidebar */}
       <aside
         id="notes-sidebar"

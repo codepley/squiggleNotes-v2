@@ -7,9 +7,29 @@
 
 import mongoose, { Schema, type Document, type Model } from 'mongoose';
 
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+export interface IUser extends Document {
+  name: string;
+  email: string;
+  password?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const userSchema = new Schema<IUser>(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String }, // optional for OAuth users
+  },
+  { timestamps: true }
+);
+
 // ─── Folders ──────────────────────────────────────────────────────────────────
 
 export interface IFolder extends Document {
+  userId: mongoose.Types.ObjectId;
   name: string;
   parentId: mongoose.Types.ObjectId | null;
   createdAt: Date;
@@ -18,6 +38,7 @@ export interface IFolder extends Document {
 
 const folderSchema = new Schema<IFolder>(
   {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     name: { type: String, required: true },
     parentId: { type: Schema.Types.ObjectId, ref: 'Folder', default: null },
   },
@@ -45,6 +66,7 @@ export interface ICanvasData {
 }
 
 export interface INote extends Document {
+  userId: mongoose.Types.ObjectId;
   folderId: mongoose.Types.ObjectId | null;
   title: string;
   canvasData: ICanvasData | null;
@@ -57,6 +79,7 @@ export interface INote extends Document {
 
 const noteSchema = new Schema<INote>(
   {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     folderId: { type: Schema.Types.ObjectId, ref: 'Folder', default: null },
     title: { type: String, required: true, default: 'Untitled Note' },
     canvasData: { type: Schema.Types.Mixed, default: null },
@@ -157,6 +180,9 @@ const revisionResponseSchema = new Schema<IRevisionResponse>({
 });
 
 // ─── Model Exports (prevent re-compilation in dev) ────────────────────────────
+
+export const User: Model<IUser> =
+  mongoose.models.User || mongoose.model<IUser>('User', userSchema);
 
 export const Folder: Model<IFolder> =
   mongoose.models.Folder || mongoose.model<IFolder>('Folder', folderSchema);

@@ -8,9 +8,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSession, signOut } from 'next-auth/react';
 import { FolderTree, type FolderNode } from './FolderTree';
 import { NoteListItem } from './NoteListItem';
 import { cn } from '@/lib/utils';
+
+// Due revision count for sidebar badge
+function useDueCount() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    fetch('/api/revision/schedule')
+      .then((r) => r.json())
+      .then(({ data }) => { if (data) setCount(data.length); })
+      .catch(() => {});
+  }, []);
+  return count;
+}
 
 interface NoteItem {
   _id: string;
@@ -74,6 +87,8 @@ function buildBreadcrumb(
 
 export function Sidebar() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const dueCount = useDueCount();
   const [folderTree, setFolderTree] = useState<FolderNode[]>([]);
   const [flatFolders, setFlatFolders] = useState<FlatFolder[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
@@ -384,13 +399,38 @@ export function Sidebar() {
       </div>
 
       {/* ── Footer ─── */}
-      <div className="border-t border-white/[0.04] px-4 py-2">
+      <div className="border-t border-white/[0.04] px-4 py-3 flex flex-col gap-3">
         <button
           onClick={() => router.push('/revision')}
-          className="w-full text-left text-xs text-[#F5A623]/60 hover:text-[#F5A623] transition-colors"
+          className="w-full flex items-center justify-between text-xs text-[#F5A623]/60 hover:text-[#F5A623] transition-colors"
         >
-          📖 Daily Revision →
+          <span>📖 Daily Revision →</span>
+          {dueCount > 0 && (
+            <span className="flex items-center gap-1">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F5A623] opacity-50" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F5A623]" />
+              </span>
+              <span className="bg-[#F5A623]/20 text-[#F5A623] text-[10px] font-medium px-1.5 py-0.5 rounded-full">
+                {dueCount}
+              </span>
+            </span>
+          )}
         </button>
+
+        {session?.user && (
+          <div className="flex items-center justify-between pt-3 mt-1 border-t border-white/[0.04]">
+            <span className="text-[10px] uppercase font-medium tracking-widest text-[#F0EDE6]/30">
+              {session.user.name?.split(' ')[0]}
+            </span>
+            <button
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="text-[10px] text-[#F0EDE6]/30 hover:text-[#FF453A] transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -196,6 +196,7 @@ export function DrawingLayer() {
 
   return (
     <canvas
+      id="drawing-canvas"
       ref={canvasRef}
       className={`absolute inset-0 z-10 touch-none ${getCursorClass()}`}
       onPointerDown={handlePointerDown}

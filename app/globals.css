@@ -1,29 +1,70 @@
 @import "tailwindcss";
 
 @theme {
-  /* SquiggleNotes Design Tokens */
-  --color-canvas: #FAFAF7;
-  --color-ink: #1C1C1E;
-  --color-accent: #4F6EF7;
-  --color-highlight: #FFD60A;
-  --color-success: #30D158;
-  --color-danger: #FF453A;
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * SquiggleNotes Design System Tokens
+   * ═══════════════════════════════════════════════════════════════════════════ */
 
-  /* Landing page tokens */
-  --color-dark-base: #0E0E0F;
-  --color-dark-panel: #161618;
-  --color-amber: #F5A623;
-  --color-warm-text: #F0EDE6;
+  /* ─── Core palette ─────────────────────────────────────────────────────── */
+  --color-canvas: #FAFAF7;           /* warm off-white paper feel */
+  --color-ink: #1C1C1E;              /* near-black for strokes */
+  --color-accent: #4F6EF7;           /* revision blue */
+  --color-highlight: #FFD60A;        /* highlighter yellow */
+  --color-success: #30D158;          /* correct answer green */
+  --color-danger: #FF453A;           /* wrong / again red */
+  --color-amber: #F5A623;            /* scheduled / due amber */
+  --color-purple: #AF52DE;           /* quiz card purple */
 
-  /* Fonts */
-  --font-sans: 'DM Sans', sans-serif;
-  --font-display: 'Instrument Serif', serif;
-  --font-handwriting: 'Caveat', cursive;
+  /* ─── Dark theme surfaces ──────────────────────────────────────────────── */
+  --color-dark-base: #0E0E0F;        /* app background */
+  --color-dark-panel: #161618;       /* sidebar, cards, panels */
+  --color-dark-elevated: #1A1A1C;    /* modals, popovers */
+  --color-dark-hover: #1E1E22;       /* hover state on dark surfaces */
+
+  /* ─── Text hierarchy ───────────────────────────────────────────────────── */
+  --color-warm-text: #F0EDE6;        /* primary text on dark */
+  --color-warm-text-muted: #F0EDE6/60; /* secondary text */
+  --color-warm-text-dim: #F0EDE6/25;   /* subtle labels */
+
+  /* ─── Borders & overlays ───────────────────────────────────────────────── */
+  --color-border: #FFFFFF0F;         /* white/6% */
+  --color-border-hover: #FFFFFF1F;   /* white/12% */
+  --color-overlay: #00000080;        /* black/50% backdrop */
+
+  /* ─── Typography ───────────────────────────────────────────────────────── */
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-handwriting: var(--font-caveat), cursive;
+
+  /* ─── Spacing scale (canvas-specific) ──────────────────────────────────── */
+  --spacing-toolbar: 0.375rem;       /* 6px — tight toolbar gaps */
+  --spacing-panel: 1.25rem;          /* 20px — panel padding */
+
+  /* ─── Shadows ──────────────────────────────────────────────────────────── */
+  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.2);
+
+  /* ─── Radii ────────────────────────────────────────────────────────────── */
+  --radius-card: 0.75rem;            /* 12px */
+  --radius-button: 0.5rem;           /* 8px */
+  --radius-pill: 9999px;             /* fully round */
+
+  /* ─── Animation durations ──────────────────────────────────────────────── */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  /* ─── Z-index layers ───────────────────────────────────────────────────── */
+  --z-canvas: 1;
+  --z-toolbar: 40;
+  --z-panel: 50;
+  --z-modal: 100;
+  --z-banner: 200;
 }
 
 :root {
-  --background: #0E0E0F;
-  --foreground: #F0EDE6;
+  --background: var(--color-dark-base);
+  --foreground: var(--color-warm-text);
 }
 
 * {
@@ -42,7 +83,33 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Utility: paper grain texture simulation via CSS */
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Base element styles
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+::selection {
+  background-color: var(--color-accent);
+  color: white;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-warm-text);
+  opacity: 0.2;
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-button);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Utility classes
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Paper grain texture overlay */
 .grain {
   position: relative;
 }
@@ -55,10 +122,84 @@ body {
   z-index: 1;
 }
 
-/* Canvas paper feel */
+/* Canvas paper with dot grid */
 .canvas-paper {
-  background-color: #FAFAF7;
+  background-color: var(--color-canvas);
   background-image:
     radial-gradient(circle, #d0cdc8 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+/* Canvas paper with line grid (alternative) */
+.canvas-lined {
+  background-color: var(--color-canvas);
+  background-image:
+    linear-gradient(to bottom, transparent 23px, #e0ddd8 23px, #e0ddd8 24px);
+  background-size: 100% 24px;
+}
+
+/* Canvas paper plain (no grid) */
+.canvas-plain {
+  background-color: var(--color-canvas);
+}
+
+/* Dark surface glassmorphism */
+.glass {
+  background: rgba(22, 22, 24, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(240, 237, 230, 0.1);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(240, 237, 230, 0.2);
+}
+
+/* Hide scrollbar but keep scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Animation utilities
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes slide-in-from-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-out-to-left {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-100%); opacity: 0; }
+}
+
+@keyframes fade-in-up {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 110, 247, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(79, 110, 247, 0); }
+}
+
+.animate-slide-in { animation: slide-in-from-right var(--duration-normal) ease-out; }
+.animate-slide-out { animation: slide-out-to-left var(--duration-normal) ease-in; }
+.animate-fade-in-up { animation: fade-in-up var(--duration-normal) ease-out; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }

@@ -55,6 +55,7 @@ interface NoteState {
   isRecording: boolean;
   recordingElapsed: number; // seconds
   audioUrl: string | null;
+  pendingTimestamps: { elementId: string; offset: number }[];
 
   // Canvas tool
   activeTool: ActiveTool;
@@ -75,6 +76,8 @@ interface NoteState {
   setRecording: (recording: boolean) => void;
   setRecordingElapsed: (elapsed: number) => void;
   setAudioUrl: (url: string | null) => void;
+  addPendingTimestamp: (elementId: string, offset: number) => void;
+  clearPendingTimestamps: () => void;
 
   resetNoteState: () => void;
 }
@@ -95,6 +98,7 @@ export const useNoteStore = create<NoteState>((set) => ({
   isRecording: false,
   recordingElapsed: 0,
   audioUrl: null,
+  pendingTimestamps: [],
 
   // Canvas tool
   activeTool: 'pen',
@@ -118,6 +122,11 @@ export const useNoteStore = create<NoteState>((set) => ({
   setRecording: (recording) => set({ isRecording: recording }),
   setRecordingElapsed: (elapsed) => set({ recordingElapsed: elapsed }),
   setAudioUrl: (url) => set({ audioUrl: url }),
+  addPendingTimestamp: (elementId, offset) =>
+    set((state) => ({
+      pendingTimestamps: [...state.pendingTimestamps, { elementId, offset }],
+    })),
+  clearPendingTimestamps: () => set({ pendingTimestamps: [] }),
 
   resetNoteState: () =>
     set({
@@ -127,5 +136,6 @@ export const useNoteStore = create<NoteState>((set) => ({
       isRecording: false,
       recordingElapsed: 0,
       audioUrl: null,
+      pendingTimestamps: [],
     }),
 }));

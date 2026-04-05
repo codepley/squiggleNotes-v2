@@ -7,7 +7,7 @@ import { RevisionFeed } from '@/components/revision/RevisionFeed';
 
 export default function RevisionPage() {
   return (
-    <div className="h-screen bg-[#0E0E0F]">
+    <div className="h-full">
       <RevisionFeed />
     </div>
   );
