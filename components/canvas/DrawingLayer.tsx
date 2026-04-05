@@ -99,7 +99,7 @@ export function DrawingLayer() {
     return () => resizeObserver.disconnect();
   }, [redrawAll]);
 
-  // ─── Keyboard shortcuts for undo/redo and wheel zoom ───────────────────────
+  // ─── Keyboard shortcuts for undo/redo and wheel zoom/pan ──────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+Z (Windows/Linux) or Cmd+Z (Mac) for undo
@@ -117,26 +117,59 @@ export function DrawingLayer() {
         e.preventDefault();
         redo();
       }
+      // Spacebar for panning mode
+      if (e.code === 'Space' && !e.ctrlKey) {
+        e.preventDefault();
+        isPanningRef.current = true;
+        panStartRef.current = null;
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        isPanningRef.current = false;
+        panStartRef.current = null;
+      }
     };
 
     const handleWheel = (e: WheelEvent) => {
-      // Only zoom if Ctrl is held
-      if (!e.ctrlKey) return;
+      // Zoom with Ctrl+scroll
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = -e.deltaY > 0 ? 1.1 : 0.9; // Scroll up = zoom in
+        const newScale = viewportScale * delta;
+        setViewportScale(newScale);
+        return;
+      }
+
+      // Pan with scroll (prevent default browser scroll)
       e.preventDefault();
       
-      const delta = -e.deltaY > 0 ? 1.1 : 0.9; // Scroll up = zoom in
-      const newScale = viewportScale * delta;
-      setViewportScale(newScale);
+      // Vertical scroll: deltaY pans up/down
+      let dx = 0;
+      let dy = 0;
+
+      if (e.shiftKey) {
+        // Shift+scroll: horizontal pan
+        dx = e.deltaY > 0 ? 30 : -30;
+      } else {
+        // Normal scroll: vertical pan
+        dy = e.deltaY > 0 ? 30 : -30;
+      }
+
+      panViewport(dx, dy);
     };
 
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
     canvasRef.current?.addEventListener('wheel', handleWheel, { passive: false });
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
       canvasRef.current?.removeEventListener('wheel', handleWheel);
     };
-  }, [undo, redo, viewportScale, setViewportScale]);
+  }, [undo, redo, viewportScale, setViewportScale, panViewport]);
 
   // ─── Drawing: live stroke preview ───────────────────────────────────────────
   const drawLiveStroke = useCallback(
@@ -210,6 +243,13 @@ export function DrawingLayer() {
         return;
       }
 
+      // Spacebar for panning mode
+      if (isPanningRef.current) {
+        e.preventDefault();
+        panStartRef.current = { x: e.clientX, y: e.clientY };
+        return;
+      }
+
       if (activeTool === 'text' || activeTool === 'review') return;
 
       isDrawingRef.current = true;
@@ -251,8 +291,11 @@ export function DrawingLayer() {
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
       if (isPanningRef.current) {
-        isPanningRef.current = false;
-        panStartRef.current = null;
+        // Only end panning if it's from middle-mouse button (not spacebar)
+        if (e.button === 1) {
+          isPanningRef.current = false;
+          panStartRef.current = null;
+        }
         return;
       }
 
