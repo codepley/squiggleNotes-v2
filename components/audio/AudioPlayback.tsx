@@ -20,7 +20,6 @@ export function AudioPlayback({ audioUrl, seekTo, onTimeUpdate }: AudioPlaybackP
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const progressRef = useRef<HTMLDivElement>(null);
 
   // ─── Auto-seek on mount or seekTo change ────────────────────────────────────
   useEffect(() => {
@@ -52,21 +51,6 @@ export function AudioPlayback({ audioUrl, seekTo, onTimeUpdate }: AudioPlaybackP
     onTimeUpdate?.(audio.currentTime);
   }, [onTimeUpdate]);
 
-  // ─── Seek via progress bar click ────────────────────────────────────────────
-  const handleSeek = useCallback(
-    (e: React.MouseEvent) => {
-      const bar = progressRef.current;
-      const audio = audioRef.current;
-      if (!bar || !audio || !duration) return;
-
-      const rect = bar.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const pct = x / rect.width;
-      audio.currentTime = pct * duration;
-    },
-    [duration],
-  );
-
   // ─── Public method: seek to offset ──────────────────────────────────────────
   const jumpTo = useCallback((offset: number) => {
     const audio = audioRef.current;
@@ -77,19 +61,17 @@ export function AudioPlayback({ audioUrl, seekTo, onTimeUpdate }: AudioPlaybackP
   }, []);
 
   // ─── Format time ───────────────────────────────────────────────────────────
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
+  const formatTime = (s: number) => {    // Handle invalid values (NaN, Infinity, negative)
+    if (!isFinite(s) || s < 0) return '0:00';    const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
     return `${m}:${String(sec).padStart(2, '0')}`;
   };
-
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-3 bg-[#1A1A1C]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl px-4 py-2"
+      className="flex items-center gap-2 bg-[#1A1A1C]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl px-3 py-2 h-10"
     >
       {/* Hidden audio element */}
       <audio
@@ -97,7 +79,11 @@ export function AudioPlayback({ audioUrl, seekTo, onTimeUpdate }: AudioPlaybackP
         src={audioUrl}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => {
-          if (audioRef.current) setDuration(audioRef.current.duration);
+          if (audioRef.current) {
+            const dur = audioRef.current.duration;
+            // Only set duration if it's a valid number
+            setDuration(isFinite(dur) ? dur : 0);
+          }
         }}
         onEnded={() => setIsPlaying(false)}
       />
@@ -105,9 +91,9 @@ export function AudioPlayback({ audioUrl, seekTo, onTimeUpdate }: AudioPlaybackP
       {/* Play/Pause button */}
       <motion.button
         onClick={togglePlay}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="w-8 h-8 rounded-full bg-[#4F6EF7] flex items-center justify-center flex-shrink-0"
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
+        className="w-7 h-7 rounded-lg bg-[#4F6EF7] flex items-center justify-center flex-shrink-0"
       >
         {isPlaying ? (
           <div className="flex gap-[2px]">
@@ -119,25 +105,10 @@ export function AudioPlayback({ audioUrl, seekTo, onTimeUpdate }: AudioPlaybackP
         )}
       </motion.button>
 
-      {/* Time */}
-      <span className="text-xs font-mono text-[#F0EDE6]/50 w-[70px] text-center flex-shrink-0">
-        {formatTime(currentTime)} / {formatTime(duration)}
+      {/* Time - current time only */}
+      <span className="text-xs font-mono text-[#F0EDE6]/50 w-[30px] text-center flex-shrink-0">
+        {formatTime(currentTime)}
       </span>
-
-      {/* Progress bar */}
-      <div
-        ref={progressRef}
-        onClick={handleSeek}
-        className="flex-1 h-1.5 bg-white/[0.06] rounded-full cursor-pointer relative group"
-      >
-        <motion.div
-          className="h-full bg-[#4F6EF7] rounded-full relative"
-          style={{ width: `${progress}%` }}
-        >
-          {/* Scrubber dot */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#4F6EF7] border-2 border-white opacity-0 group-hover:opacity-100 transition-opacity" />
-        </motion.div>
-      </div>
     </motion.div>
   );
 }
