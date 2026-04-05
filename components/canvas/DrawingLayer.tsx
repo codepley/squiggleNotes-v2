@@ -120,10 +120,10 @@ export function DrawingLayer() {
     };
 
     const handleWheel = (e: WheelEvent) => {
-      // Zoom with Ctrl+scroll
+      // Zoom with Ctrl+scroll (SLOW - 5% increments)
       if (e.ctrlKey) {
         e.preventDefault();
-        const delta = -e.deltaY > 0 ? 1.1 : 0.9; // Scroll up = zoom in
+        const delta = -e.deltaY > 0 ? 1.05 : 0.95; // Scroll up = zoom in (slow)
         const newScale = viewportScale * delta;
         setViewportScale(newScale);
         return;
