@@ -74,29 +74,24 @@ export function DrawingLayer() {
     redrawAll();
   }, [redrawAll]);
 
-  // ─── Canvas resize observer ─────────────────────────────────────────────────
+  // ─── Fixed canvas size (2000x2000 with scrollbars) ───────────────────────────
+  const CANVAS_WIDTH = 2000;
+  const CANVAS_HEIGHT = 2000;
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const parent = canvas.parentElement;
-    if (!parent) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        canvas.width = width * window.devicePixelRatio;
-        canvas.height = height * window.devicePixelRatio;
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
-        const ctx = canvas.getContext('2d');
-        if (ctx) ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-        redrawAll();
-      }
-    });
-
-    resizeObserver.observe(parent);
-    return () => resizeObserver.disconnect();
+    // Set fixed canvas size
+    canvas.width = CANVAS_WIDTH * window.devicePixelRatio;
+    canvas.height = CANVAS_HEIGHT * window.devicePixelRatio;
+    canvas.style.width = `${CANVAS_WIDTH}px`;
+    canvas.style.height = `${CANVAS_HEIGHT}px`;
+    
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    
+    redrawAll();
   }, [redrawAll]);
 
   // ─── Keyboard shortcuts for undo/redo and wheel zoom/scroll ─────────────────
@@ -120,10 +115,10 @@ export function DrawingLayer() {
     };
 
     const handleWheel = (e: WheelEvent) => {
-      // Zoom with Ctrl+scroll (SLOW - 5% increments)
+      // Zoom with Ctrl+scroll (VERY SLOW - 2% increments)
       if (e.ctrlKey) {
         e.preventDefault();
-        const delta = -e.deltaY > 0 ? 1.05 : 0.95; // Scroll up = zoom in (slow)
+        const delta = -e.deltaY > 0 ? 1.02 : 0.98; // Scroll up = zoom in (very slow)
         const newScale = viewportScale * delta;
         setViewportScale(newScale);
         return;

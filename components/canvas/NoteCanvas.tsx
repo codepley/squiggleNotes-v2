@@ -131,7 +131,7 @@ export function NoteCanvas({
       </div>
 
       {/* ── Canvas area ─── */}
-      <div className="relative flex-1 overflow-hidden canvas-paper">
+      <div className="relative flex-1 overflow-auto canvas-paper">
         {/* Drawing canvas */}
         <DrawingLayer />
 
