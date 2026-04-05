@@ -29,6 +29,7 @@ export default async function NoteCanvasPage({ params }: PageProps) {
         noteId={noteId}
         initialCanvasData={canvasData}
         initialTitle={note.title}
+        initialAudioUrl={note.audioFileUrl ?? null}
       />
     </div>
   );

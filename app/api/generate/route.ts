@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db/client';
-import { Note, GeneratedContent } from '@/lib/db/schema';
+import { Note, GeneratedContent, RevisionSession } from '@/lib/db/schema';
 import { extractAndGenerate } from '@/lib/ai/generator';
 import type { CanvasData } from '@/store/noteStore';
 
@@ -35,6 +35,25 @@ export async function POST(req: NextRequest) {
         },
       })),
     );
+
+    // Auto-schedule revision (due in 24h) if no active session exists
+    const existingSession = await RevisionSession.findOne({
+      noteId,
+      completedAt: null,
+    });
+
+    if (!existingSession && docs.length > 0) {
+      const scheduledAt = new Date();
+      const nextDue = new Date();
+      nextDue.setDate(nextDue.getDate() + 1);
+
+      await RevisionSession.create({
+        noteId,
+        scheduledAt,
+        nextDue,
+        intervalDays: 1,
+      });
+    }
 
     return NextResponse.json({ data: docs, error: null }, { status: 201 });
   } catch (err) {

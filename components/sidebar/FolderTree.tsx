@@ -73,15 +73,16 @@ function FolderItem({
 
   return (
     <div>
-      <motion.button
+      <motion.div
         onClick={handleClick}
+        role="button"
+        tabIndex={0}
         className={cn(
-          'group w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm transition-colors',
+          'group w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer',
           isActive
             ? 'bg-[#4F6EF7]/10 text-[#F0EDE6]'
             : 'text-[#F0EDE6]/50 hover:text-[#F0EDE6]/80 hover:bg-white/[0.03]',
         )}
-        whileTap={{ scale: 0.98 }}
       >
         {/* Chevron */}
         <motion.span
@@ -99,17 +100,19 @@ function FolderItem({
         <span className="truncate flex-1 text-left">{folder.name}</span>
 
         {/* Add subfolder */}
-        <button
+        <span
           onClick={(e) => {
             e.stopPropagation();
             onCreateFolder(folder._id);
           }}
-          className="opacity-0 group-hover:opacity-100 text-[10px] text-[#F0EDE6]/30 hover:text-[#F0EDE6]/60 transition-opacity w-4 h-4 flex items-center justify-center"
+          role="button"
+          tabIndex={0}
+          className="opacity-0 group-hover:opacity-100 text-[10px] text-[#F0EDE6]/30 hover:text-[#F0EDE6]/60 transition-opacity w-4 h-4 flex items-center justify-center cursor-pointer"
           title="Add subfolder"
         >
           +
-        </button>
-      </motion.button>
+        </span>
+      </motion.div>
 
       {/* Children */}
       <AnimatePresence>

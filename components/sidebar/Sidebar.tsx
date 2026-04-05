@@ -2,14 +2,15 @@
 
 /**
  * Sidebar — folder tree + search bar + "New Note" / "New Folder" buttons + note list.
- * Main navigation component for the /notes/* routes.
+ * Seamless folder navigation with breadcrumb trail and back button.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FolderTree, type FolderNode } from './FolderTree';
 import { NoteListItem } from './NoteListItem';
+import { cn } from '@/lib/utils';
 
 interface NoteItem {
   _id: string;
@@ -17,9 +18,15 @@ interface NoteItem {
   updatedAt: string;
 }
 
+interface FlatFolder {
+  _id: string;
+  name: string;
+  parentId: string | null;
+}
+
 // ─── Build tree from flat folder list ─────────────────────────────────────────
 
-function buildTree(folders: { _id: string; name: string; parentId: string | null }[]): FolderNode[] {
+function buildTree(folders: FlatFolder[]): FolderNode[] {
   const map = new Map<string, FolderNode>();
   const roots: FolderNode[] = [];
 
@@ -39,11 +46,36 @@ function buildTree(folders: { _id: string; name: string; parentId: string | null
   return roots;
 }
 
+// ─── Build breadcrumb path from folder ID to root ─────────────────────────────
+
+function buildBreadcrumb(
+  folderId: string | null,
+  flatFolders: FlatFolder[],
+): { id: string; name: string }[] {
+  if (!folderId) return [];
+
+  const map = new Map<string, FlatFolder>();
+  for (const f of flatFolders) map.set(f._id, f);
+
+  const crumbs: { id: string; name: string }[] = [];
+  let current = folderId;
+
+  while (current) {
+    const folder = map.get(current);
+    if (!folder) break;
+    crumbs.unshift({ id: folder._id, name: folder.name });
+    current = folder.parentId!;
+  }
+
+  return crumbs;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function Sidebar() {
   const router = useRouter();
-  const [folders, setFolders] = useState<FolderNode[]>([]);
+  const [folderTree, setFolderTree] = useState<FolderNode[]>([]);
+  const [flatFolders, setFlatFolders] = useState<FlatFolder[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -54,7 +86,10 @@ export function Sidebar() {
     try {
       const res = await fetch('/api/folders');
       const { data } = await res.json();
-      if (data) setFolders(buildTree(data));
+      if (data) {
+        setFlatFolders(data);
+        setFolderTree(buildTree(data));
+      }
     } catch (err) {
       console.error('Failed to fetch folders:', err);
     }
@@ -86,15 +121,27 @@ export function Sidebar() {
     [fetchNotes],
   );
 
+  // ── Go back to parent folder ────────────────────────────────────────────────
+  const handleGoBack = useCallback(() => {
+    if (!activeFolderId) return;
+    const current = flatFolders.find((f) => f._id === activeFolderId);
+    const parentId = current?.parentId ?? null;
+    setActiveFolderId(parentId);
+    fetchNotes(parentId);
+  }, [activeFolderId, flatFolders, fetchNotes]);
+
   // ── Create new note ─────────────────────────────────────────────────────────
   const handleNewNote = useCallback(async () => {
+    const title = prompt('Note title:')?.trim();
+    if (!title) return;
+
     try {
       const res = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           folderId: activeFolderId,
-          title: 'Untitled Note',
+          title,
         }),
       });
       const { data } = await res.json();
@@ -141,7 +188,27 @@ export function Sidebar() {
     [activeFolderId, fetchNotes, router],
   );
 
-  // ── Filtered notes ──────────────────────────────────────────────────────────
+  // ── Rename note ─────────────────────────────────────────────────────────────
+  const handleRenameNote = useCallback(
+    async (noteId: string, newTitle: string) => {
+      try {
+        await fetch(`/api/notes/${noteId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: newTitle }),
+        });
+        await fetchNotes(activeFolderId);
+      } catch (err) {
+        console.error('Failed to rename note:', err);
+      }
+    },
+    [activeFolderId, fetchNotes],
+  );
+
+  // ── Derived data ────────────────────────────────────────────────────────────
+  const breadcrumb = buildBreadcrumb(activeFolderId, flatFolders);
+  const activeFolderName = flatFolders.find((f) => f._id === activeFolderId)?.name;
+
   const filteredNotes = search.trim()
     ? notes.filter((n) => n.title.toLowerCase().includes(search.toLowerCase()))
     : notes;
@@ -190,30 +257,66 @@ export function Sidebar() {
         </motion.button>
       </div>
 
+      {/* ── Breadcrumb navigation ─── */}
+      <AnimatePresence mode="wait">
+        {activeFolderId ? (
+          <motion.div
+            key="breadcrumb"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            className="px-3 pb-2"
+          >
+            {/* Back button + breadcrumb trail */}
+            <div className="flex items-center gap-1 flex-wrap">
+              <button
+                onClick={handleGoBack}
+                className="flex items-center gap-1 text-xs text-[#4F6EF7] hover:text-[#4F6EF7]/80 transition-colors flex-shrink-0"
+              >
+                <span className="text-[10px]">←</span>
+                Back
+              </button>
+
+              <span className="text-[#F0EDE6]/15 text-[10px]">|</span>
+
+              {/* Root */}
+              <button
+                onClick={() => handleSelectFolder(null)}
+                className="text-[10px] text-[#F0EDE6]/30 hover:text-[#F0EDE6]/60 transition-colors"
+              >
+                All
+              </button>
+
+              {/* Trail */}
+              {breadcrumb.map((crumb, i) => (
+                <span key={crumb.id} className="flex items-center gap-1">
+                  <span className="text-[#F0EDE6]/15 text-[10px]">/</span>
+                  <button
+                    onClick={() => handleSelectFolder(crumb.id)}
+                    className={cn(
+                      'text-[10px] transition-colors truncate max-w-[80px]',
+                      i === breadcrumb.length - 1
+                        ? 'text-[#F0EDE6]/70 font-medium'
+                        : 'text-[#F0EDE6]/30 hover:text-[#F0EDE6]/60',
+                    )}
+                  >
+                    {crumb.name}
+                  </button>
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
       {/* ── Folders ─── */}
-      {folders.length > 0 && (
+      {folderTree.length > 0 && (
         <div className="px-3 pb-2">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[11px] uppercase tracking-wider text-[#F0EDE6]/25 font-medium">
-              Folders
-            </p>
-            <button
-              onClick={() => {
-                setActiveFolderId(null);
-                fetchNotes(null);
-              }}
-              className={cn(
-                'text-[10px] transition-colors',
-                activeFolderId === null
-                  ? 'text-[#4F6EF7]'
-                  : 'text-[#F0EDE6]/30 hover:text-[#F0EDE6]/50',
-              )}
-            >
-              All Notes
-            </button>
-          </div>
+          <p className="text-[11px] uppercase tracking-wider text-[#F0EDE6]/25 font-medium mb-1">
+            Folders
+          </p>
           <FolderTree
-            folders={folders}
+            folders={folderTree}
             activeFolderId={activeFolderId}
             onSelectFolder={handleSelectFolder}
             onCreateFolder={handleNewFolder}
@@ -224,11 +327,22 @@ export function Sidebar() {
       {/* ── Divider ─── */}
       <div className="mx-3 border-t border-white/[0.04]" />
 
-      {/* ── Notes list ─── */}
+      {/* ── Notes list header ─── */}
       <div className="flex-1 overflow-y-auto px-3 py-2">
-        <p className="text-[11px] uppercase tracking-wider text-[#F0EDE6]/25 font-medium mb-2">
-          Notes {filteredNotes.length > 0 && `(${filteredNotes.length})`}
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[11px] uppercase tracking-wider text-[#F0EDE6]/25 font-medium">
+            {activeFolderName ? `${activeFolderName}` : 'All Notes'}{' '}
+            {filteredNotes.length > 0 && `(${filteredNotes.length})`}
+          </p>
+          {activeFolderId && (
+            <button
+              onClick={() => handleSelectFolder(null)}
+              className="text-[10px] text-[#F0EDE6]/30 hover:text-[#4F6EF7] transition-colors"
+            >
+              Show all
+            </button>
+          )}
+        </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -261,6 +375,7 @@ export function Sidebar() {
                   title={note.title}
                   updatedAt={note.updatedAt}
                   onDelete={handleDeleteNote}
+                  onRename={handleRenameNote}
                 />
               </motion.div>
             ))}
@@ -279,10 +394,4 @@ export function Sidebar() {
       </div>
     </div>
   );
-}
-
-// ─── cn import helper (used inline) ───────────────────────────────────────────
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
 }
