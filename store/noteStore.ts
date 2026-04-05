@@ -51,6 +51,15 @@ interface NoteState {
   canvasData: CanvasData | null;
   isDirty: boolean;
 
+  // Undo/Redo stacks
+  undoStack: CanvasData[];
+  redoStack: CanvasData[];
+
+  // Viewport transform (for infinite canvas)
+  viewportOffsetX: number;
+  viewportOffsetY: number;
+  viewportScale: number;
+
   // Audio
   isRecording: boolean;
   recordingElapsed: number; // seconds
@@ -68,6 +77,18 @@ interface NoteState {
   updateCanvasData: (updater: (prev: CanvasData) => CanvasData) => void;
   markDirty: () => void;
   markClean: () => void;
+
+  // Undo/Redo actions
+  pushUndo: (data: CanvasData) => void;
+  popUndo: () => CanvasData | null;
+  pushRedo: (data: CanvasData) => void;
+  popRedo: () => CanvasData | null;
+  clearRedo: () => void;
+
+  // Viewport actions
+  panViewport: (dx: number, dy: number) => void;
+  setViewportScale: (scale: number) => void;
+  resetViewport: () => void;
 
   setActiveTool: (tool: ActiveTool) => void;
   setActiveColor: (color: string) => void;
@@ -94,6 +115,15 @@ export const useNoteStore = create<NoteState>((set) => ({
   canvasData: null,
   isDirty: false,
 
+  // Undo/Redo stacks
+  undoStack: [],
+  redoStack: [],
+
+  // Viewport transform (for infinite canvas)
+  viewportOffsetX: 0,
+  viewportOffsetY: 0,
+  viewportScale: 1,
+
   // Audio
   isRecording: false,
   recordingElapsed: 0,
@@ -114,6 +144,54 @@ export const useNoteStore = create<NoteState>((set) => ({
     })),
   markDirty: () => set({ isDirty: true }),
   markClean: () => set({ isDirty: false }),
+
+  // Undo/Redo actions with 50-item limit
+  pushUndo: (data) =>
+    set((state) => ({
+      undoStack: [...state.undoStack.slice(-49), data],
+    })),
+  popUndo: () => {
+    let popped: CanvasData | null = null;
+    set((state) => {
+      if (state.undoStack.length === 0) return state;
+      const newStack = [...state.undoStack];
+      popped = newStack.pop()!;
+      return { undoStack: newStack };
+    });
+    return popped;
+  },
+  pushRedo: (data) =>
+    set((state) => ({
+      redoStack: [...state.redoStack.slice(-49), data],
+    })),
+  popRedo: () => {
+    let popped: CanvasData | null = null;
+    set((state) => {
+      if (state.redoStack.length === 0) return state;
+      const newStack = [...state.redoStack];
+      popped = newStack.pop()!;
+      return { redoStack: newStack };
+    });
+    return popped;
+  },
+  clearRedo: () => set({ redoStack: [] }),
+
+  // Viewport actions for infinite canvas
+  panViewport: (dx, dy) =>
+    set((state) => ({
+      viewportOffsetX: state.viewportOffsetX + dx,
+      viewportOffsetY: state.viewportOffsetY + dy,
+    })),
+  setViewportScale: (scale) =>
+    set({
+      viewportScale: Math.max(0.1, Math.min(4, scale)), // Clamp between 0.1x and 4x
+    }),
+  resetViewport: () =>
+    set({
+      viewportOffsetX: 0,
+      viewportOffsetY: 0,
+      viewportScale: 1,
+    }),
 
   setActiveTool: (tool) => set({ activeTool: tool }),
   setActiveColor: (color) => set({ activeColor: color }),
@@ -137,5 +215,10 @@ export const useNoteStore = create<NoteState>((set) => ({
       recordingElapsed: 0,
       audioUrl: null,
       pendingTimestamps: [],
+      undoStack: [],
+      redoStack: [],
+      viewportOffsetX: 0,
+      viewportOffsetY: 0,
+      viewportScale: 1,
     }),
 }));

@@ -10,18 +10,39 @@ import { useNoteStore, type ActiveTool } from '@/store/noteStore';
 import { useCanvas } from '@/hooks/useCanvas';
 import { cn } from '@/lib/utils';
 
+// ─── Tool Icon Components ─────────────────────────────────────────────────────
+
+function EraserIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="w-5 h-5"
+    >
+      {/* Eraser body */}
+      <path d="M7 18L3 14L14 3L18 7L7 18Z" />
+      {/* Eraser tip corner */}
+      <path d="M3 14L7 18" strokeWidth="2.5" />
+    </svg>
+  );
+}
+
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
 interface ToolDef {
   id: ActiveTool;
   label: string;
-  icon: string; // emoji placeholder — replace with proper icons later
+  icon: string | React.ReactNode;
 }
 
 const TOOLS: ToolDef[] = [
   { id: 'pen', label: 'Pen', icon: '✏️' },
   { id: 'highlighter', label: 'Highlight', icon: '🖍️' },
-  { id: 'eraser', label: 'Eraser', icon: '🧹' },
+  { id: 'eraser', label: 'Eraser', icon: <EraserIcon /> },
   { id: 'text', label: 'Text', icon: '𝐓' },
   { id: 'review', label: 'Review', icon: '🔍' },
 ];
@@ -75,7 +96,9 @@ export function Toolbar() {
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
               />
             )}
-            <span className="relative z-10">{tool.icon}</span>
+            <span className="relative z-10">
+              {typeof tool.icon === 'string' ? tool.icon : tool.icon}
+            </span>
           </motion.button>
         ))}
       </div>

@@ -13,8 +13,8 @@ import { useCanvas } from '@/hooks/useCanvas';
 import { cn } from '@/lib/utils';
 
 export function TypingLayer() {
-  const { activeTool, activeColor } = useNoteStore();
-  const { canvasData, addTextBlock, updateTextBlock, removeTextBlock } = useCanvas();
+  const { activeTool, activeColor, viewportOffsetX, viewportOffsetY, viewportScale } = useNoteStore();
+  const { canvasData, addTextBlock, updateTextBlock, removeTextBlock, finalizeTextBlock } = useCanvas();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const dragStartRef = useRef<{ x: number; y: number; blockX: number; blockY: number } | null>(null);
@@ -82,14 +82,39 @@ export function TypingLayer() {
     dragStartRef.current = null;
   }, []);
 
+  // ─── Text editing ───────────────────────────────────────────────────────────
+  const handleTextChange = useCallback(
+    (id: string, content: string) => {
+      updateTextBlock(id, content);
+    },
+    [updateTextBlock],
+  );
+
+  const handleBlur = useCallback(
+    (id: string, content: string) => {
+      setEditingId(null);
+      // Finalize text edit for undo/redo
+      finalizeTextBlock(id);
+      // Remove empty text blocks
+      if (!content.trim()) {
+        removeTextBlock(id);
+      }
+    },
+    [removeTextBlock, finalizeTextBlock],
+  );
+
   const textBlocks = canvasData?.textBlocks ?? [];
   const pointerEvents = activeTool === 'text' ? 'auto' : 'none';
 
   return (
     <div
       ref={layerRef}
-      className="absolute inset-0 z-20 pointer-events-none"
-      style={{ pointerEvents, top: 0, left: 0, right: 0, bottom: 0 }}
+      className="absolute inset-0 z-20"
+      style={{
+        pointerEvents,
+        transform: `translate(${viewportOffsetX}px, ${viewportOffsetY}px) scale(${viewportScale})`,
+        transformOrigin: '0 0',
+      }}
       onClick={handleLayerClick}
       onMouseMove={handleDragMove}
       onMouseUp={handleDragEnd}

@@ -8,7 +8,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNoteStore } from '@/store/noteStore';
-import { WaveformVisualizer } from './WaveformVisualizer';
 
 interface AudioRecorderProps {
   noteId: string;
@@ -101,7 +100,7 @@ export function AudioRecorder({ noteId, onRecordingStop }: AudioRecorderProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="flex items-center gap-3 bg-[#1A1A1C]/90 backdrop-blur-xl border border-[#FF453A]/20 rounded-xl px-4 py-2"
+          className="flex items-center gap-2 bg-[#1A1A1C]/90 backdrop-blur-xl border border-[#FF453A]/20 rounded-xl px-3 py-2 h-10"
         >
           {/* Stop button with pulsing ring */}
           <div className="relative">
@@ -115,23 +114,16 @@ export function AudioRecorder({ noteId, onRecordingStop }: AudioRecorderProps) {
             />
             <motion.button
               onClick={handleStop}
-              whileTap={{ scale: 0.9 }}
-              className="relative w-8 h-8 rounded-full bg-[#FF453A] flex items-center justify-center"
+              whileTap={{ scale: 0.92 }}
+              className="relative w-7 h-7 rounded-lg bg-[#FF453A] flex items-center justify-center"
             >
               <div className="w-3 h-3 rounded-sm bg-white" />
             </motion.button>
           </div>
 
-          {/* Timer */}
-          <span className="text-sm font-mono text-[#FF453A]">
+          {/* Elapsed time only */}
+          <span className="text-xs font-mono text-[#FF453A]">
             {formatTime(recordingElapsed)}
-          </span>
-
-          {/* Waveform */}
-          <WaveformVisualizer stream={streamRef.current} isActive={isRecording} barCount={16} />
-
-          <span className="text-[10px] text-[#F0EDE6]/30 uppercase tracking-wider">
-            Recording
           </span>
         </motion.div>
       ) : (
@@ -143,10 +135,10 @@ export function AudioRecorder({ noteId, onRecordingStop }: AudioRecorderProps) {
           onClick={handleStart}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 bg-[#1A1A1C]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl px-4 py-2 text-[#F0EDE6]/60 hover:text-[#F0EDE6]/90 transition-colors"
+          className="flex items-center gap-2 bg-[#1A1A1C]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl px-3 py-2 h-10 text-[#F0EDE6]/60 hover:text-[#F0EDE6]/90 transition-colors"
         >
-          <div className="w-3 h-3 rounded-full bg-[#FF453A]" />
-          <span className="text-sm">Record</span>
+          <div className="w-2.5 h-2.5 rounded-full bg-[#FF453A]" />
+          <span className="text-xs font-medium">Record</span>
         </motion.button>
       )}
     </AnimatePresence>

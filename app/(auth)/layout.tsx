@@ -12,7 +12,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="absolute top-8 left-8 z-10">
         <Link
           href="/"
-          className="text-2xl text-[#F0EDE6] hover:opacity-80 transition-opacity"
+          className="text-3xl text-[#F0EDE6] hover:opacity-80 transition-opacity"
           style={{ fontFamily: 'var(--font-caveat), cursive' }}
         >
           Squiggle<span className="text-[#F5A623]">Notes</span>
