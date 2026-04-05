@@ -43,6 +43,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const updateFields: Record<string, unknown> = {};
     if (body.canvasData !== undefined) updateFields.canvasData = body.canvasData;
     if (body.title !== undefined) updateFields.title = body.title;
+    if (body.isFavourite !== undefined) updateFields.isFavourite = body.isFavourite;
+    if (body.isDeleted !== undefined) updateFields.isDeleted = body.isDeleted;
+    if (body.deletedAt !== undefined) updateFields.deletedAt = body.deletedAt;
+    if (body.sharedWith !== undefined) updateFields.sharedWith = body.sharedWith;
 
     const updated = await Note.findOneAndUpdate(
       { _id: noteId, userId: session.user.id },
@@ -69,7 +73,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/notes/[noteId]
+// DELETE /api/notes/[noteId] — soft delete (moves to trash)
 export async function DELETE(_req: NextRequest, { params }: RouteParams) {
   try {
     const session = await getServerSession(authOptions);
@@ -80,8 +84,13 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
     await connectDB();
     const { noteId } = await params;
 
-    const deleted = await Note.findOneAndDelete({ _id: noteId, userId: session.user.id });
-    if (!deleted) {
+    const updated = await Note.findOneAndUpdate(
+      { _id: noteId, userId: session.user.id },
+      { $set: { isDeleted: true, deletedAt: new Date() } },
+      { new: true },
+    ).lean();
+
+    if (!updated) {
       return NextResponse.json({ data: null, error: 'Note not found or unauthorized' }, { status: 404 });
     }
 

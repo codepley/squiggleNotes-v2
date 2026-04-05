@@ -20,7 +20,7 @@ function useDueCount() {
     fetch('/api/revision/schedule')
       .then((r) => r.json())
       .then(({ data }) => { if (data) setCount(data.length); })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
   return count;
 }
@@ -416,6 +416,13 @@ export function Sidebar() {
               </span>
             </span>
           )}
+        </button>
+
+        <button
+          onClick={() => router.push('/library')}
+          className="w-full flex items-center text-xs text-[#4F6EF7]/60 hover:text-[#4F6EF7] transition-colors"
+        >
+          📚 Library →
         </button>
 
         {session?.user && (

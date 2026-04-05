@@ -73,6 +73,10 @@ export interface INote extends Document {
   audioFileUrl: string | null;
   audioDurationSeconds: number | null;
   lastStudiedAt: Date | null;
+  isFavourite: boolean;
+  isDeleted: boolean;
+  deletedAt: Date | null;
+  sharedWith: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,6 +90,10 @@ const noteSchema = new Schema<INote>(
     audioFileUrl: { type: String, default: null },
     audioDurationSeconds: { type: Number, default: null },
     lastStudiedAt: { type: Date, default: null },
+    isFavourite: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null },
+    sharedWith: { type: [String], default: [] },
   },
   { timestamps: true },
 );
