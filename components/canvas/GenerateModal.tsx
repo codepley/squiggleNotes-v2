@@ -31,10 +31,14 @@ export function GenerateModal({ isOpen, onClose, noteId }: GenerateModalProps) {
     setFlippedCards(new Set());
 
     try {
+      // Grab visual snapshot of handwriting
+      const canvasEl = document.getElementById('drawing-canvas') as HTMLCanvasElement | null;
+      const imageData = canvasEl ? canvasEl.toDataURL('image/png') : null;
+
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ noteId }),
+        body: JSON.stringify({ noteId, imageData }),
       });
 
       const { data, error: apiError } = await res.json();

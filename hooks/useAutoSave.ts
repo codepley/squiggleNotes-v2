@@ -26,14 +26,20 @@ export function useAutoSave() {
       isSavingRef.current = true;
 
       try {
+        const storeState = useNoteStore.getState();
+        const pendingTimestamps = storeState.pendingTimestamps;
+
         const res = await fetch(`/api/notes/${activeNoteId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ canvasData }),
+          body: JSON.stringify({ canvasData, pendingTimestamps }),
         });
 
         if (res.ok) {
           markClean();
+          if (pendingTimestamps.length > 0) {
+             storeState.clearPendingTimestamps();
+          }
         } else {
           console.error('[useAutoSave] Save failed:', res.status);
         }

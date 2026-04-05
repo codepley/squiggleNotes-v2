@@ -53,6 +53,12 @@ export function useCanvas() {
         ...prev,
         strokes: [...prev.strokes, newStroke],
       }));
+      
+      const state = useNoteStore.getState();
+      if (state.isRecording) {
+        state.addPendingTimestamp(newStroke.id, state.recordingElapsed);
+      }
+      
       markDirty();
     },
     [snapshot, updateCanvasData, markDirty],
@@ -66,6 +72,12 @@ export function useCanvas() {
         ...prev,
         textBlocks: [...prev.textBlocks, newBlock],
       }));
+      
+      const state = useNoteStore.getState();
+      if (state.isRecording) {
+        state.addPendingTimestamp(newBlock.id, state.recordingElapsed);
+      }
+      
       markDirty();
       return newBlock.id;
     },

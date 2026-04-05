@@ -41,6 +41,10 @@ export function NoteCanvas({
     audioOffset: number | null;
   }>({ elementType: null, elementContent: null, audioOffset: null });
 
+  // Timestamp links loaded asynchronously
+  const [timestampLinks, setTimestampLinks] = useState<Record<string, number>>({});
+  const [linksLoaded, setLinksLoaded] = useState(false);
+
   // Generate modal state
   const [generateOpen, setGenerateOpen] = useState(false);
 
@@ -56,6 +60,25 @@ export function NoteCanvas({
     };
   }, [noteId, initialCanvasData, initialAudioUrl, setActiveNoteId, setCanvasData, setAudioUrl]);
 
+  // Fetch timestamp links lazily when entering review mode
+  useEffect(() => {
+    if (activeTool === 'review') {
+      fetch(`/api/notes/${noteId}/timestamps`)
+        .then(res => res.json())
+        .then(({ data }) => {
+          if (data && Array.isArray(data)) {
+            const map: Record<string, number> = {};
+            data.forEach((link: any) => {
+              map[link.canvasElementId] = link.audioOffsetSeconds;
+            });
+            setTimestampLinks(map);
+          }
+          setLinksLoaded(true);
+        })
+        .catch(err => console.error("Failed to fetch timestamps", err));
+    }
+  }, [activeTool, noteId]);
+
   // Enable auto-save
   useAutoSave();
 
@@ -64,16 +87,19 @@ export function NoteCanvas({
   // Handle element tap in review mode
   const handleElementTap = useCallback(
     (info: { elementType: 'stroke' | 'text'; elementId: string; content: string | null }) => {
-      // TODO: Look up TimestampLink for this element to get audioOffset
-      // For now, show panel with element info
+      // Look up TimestampLink for this element to get audioOffset
+      const storeState = useNoteStore.getState();
+      const pendingMatch = storeState.pendingTimestamps.find(pt => pt.elementId === info.elementId);
+      const offset = pendingMatch ? pendingMatch.offset : (timestampLinks[info.elementId] ?? null);
+      
       setContextInfo({
         elementType: info.elementType,
         elementContent: info.content,
-        audioOffset: null, // will be populated when timestamp links are queried
+        audioOffset: offset, 
       });
       setContextOpen(true);
     },
-    [],
+    [timestampLinks],
   );
 
   return (

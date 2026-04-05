@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { connectDB } from '@/lib/db/client';
-import { RevisionSession, RevisionResponse } from '@/lib/db/schema';
+import { RevisionSession, RevisionResponse, Note } from '@/lib/db/schema';
 import { getNextInterval, computeNextDue, type Rating } from '@/lib/spaced-repetition/scheduler';
 
 const RATING_MAP: Record<string, Rating> = {
@@ -13,8 +15,19 @@ const RATING_MAP: Record<string, Rating> = {
 // POST /api/revision/session — create new session for a note
 export async function POST(req: NextRequest) {
   try {
+    const authSession = await getServerSession(authOptions);
+    if (!authSession || !authSession.user) {
+      return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+    }
+
     await connectDB();
     const { noteId } = await req.json();
+
+    // Verify ownership
+    const note = await Note.findOne({ _id: noteId, userId: authSession.user.id }).lean();
+    if (!note) {
+      return NextResponse.json({ data: null, error: 'Note not found or unauthorized' }, { status: 404 });
+    }
 
     const scheduledAt = new Date();
     const nextDue = new Date();
@@ -36,6 +49,11 @@ export async function POST(req: NextRequest) {
 // PATCH /api/revision/session — submit rating, compute next interval
 export async function PATCH(req: NextRequest) {
   try {
+    const authSession = await getServerSession(authOptions);
+    if (!authSession || !authSession.user) {
+      return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
+    }
+
     await connectDB();
     const { sessionId, contentId, rating: ratingStr } = await req.json();
     const rating = RATING_MAP[ratingStr as string];
@@ -48,6 +66,12 @@ export async function PATCH(req: NextRequest) {
     const session = await RevisionSession.findById(sessionId);
     if (!session) {
       return NextResponse.json({ data: null, error: 'Session not found' }, { status: 404 });
+    }
+
+    // Verify ownership of the Note to which this session belongs
+    const note = await Note.findOne({ _id: session.noteId, userId: authSession.user.id }).lean();
+    if (!note) {
+      return NextResponse.json({ data: null, error: 'Unauthorized' }, { status: 401 });
     }
 
     // Record response
