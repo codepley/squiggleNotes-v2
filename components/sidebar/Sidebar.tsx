@@ -13,6 +13,8 @@ import { FolderTree, type FolderNode } from './FolderTree';
 import { NoteListItem } from './NoteListItem';
 import { cn } from '@/lib/utils';
 
+
+
 // Due revision count for sidebar badge
 function useDueCount() {
   const [count, setCount] = useState(0);
@@ -254,26 +256,24 @@ export function Sidebar() {
 
       {/* ── New Note + New Folder buttons ─── */}
       <div className="px-3 pb-3 flex gap-1.5">
-        <motion.button
-          onClick={handleNewNote}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-[#4F6EF7] hover:bg-[#4F6EF7]/90 text-white text-sm font-medium rounded-lg py-2 transition-colors"
-        >
-          <span className="text-xs">+</span> New Note
-        </motion.button>
-        <motion.button
-          onClick={() => handleNewFolder(activeFolderId)}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center justify-center w-9 h-9 bg-white/[0.05] hover:bg-white/[0.08] text-[#F0EDE6]/50 text-sm rounded-lg transition-colors"
-          title="New Folder"
-        >
-          📁
-        </motion.button>
+          <motion.button
+            onClick={handleNewNote}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-[#4F6EF7] hover:bg-[#4F6EF7]/90 text-white text-sm font-medium rounded-lg py-2 transition-colors"
+          >
+            <span className="text-xs">+</span> New Note
+          </motion.button>
+          <motion.button
+            onClick={() => handleNewFolder(activeFolderId)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center justify-center w-9 h-9 bg-white/[0.05] hover:bg-white/[0.08] text-[#F0EDE6]/50 text-sm rounded-lg transition-colors"
+            title="New Folder"
+          >
+            📁
+          </motion.button>
       </div>
-
-      {/* ── Breadcrumb navigation ─── */}
       <AnimatePresence mode="wait">
         {activeFolderId ? (
           <motion.div
@@ -343,60 +343,60 @@ export function Sidebar() {
       {/* ── Divider ─── */}
       <div className="mx-3 border-t border-white/[0.04]" />
 
-      {/* ── Notes list header ─── */}
-      <div className="flex-1 overflow-y-auto px-3 py-2">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[11px] uppercase tracking-wider text-[#F0EDE6]/25 font-medium">
-            {activeFolderName ? `${activeFolderName}` : 'All Notes'}{' '}
-            {filteredNotes.length > 0 && `(${filteredNotes.length})`}
-          </p>
-          {activeFolderId && (
-            <button
-              onClick={() => handleSelectFolder(null)}
-              className="text-[10px] text-[#F0EDE6]/30 hover:text-[#4F6EF7] transition-colors"
-            >
-              Show all
-            </button>
-          )}
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="w-4 h-4 border-2 border-[#4F6EF7]/30 border-t-[#4F6EF7] rounded-full animate-spin" />
-          </div>
-        ) : filteredNotes.length === 0 ? (
-          <p className="text-sm text-[#F0EDE6]/20 text-center py-6">
-            {search ? 'No notes match your search' : 'No notes yet'}
-          </p>
-        ) : (
-          <motion.div
-            className="flex flex-col gap-0.5"
-            initial="hidden"
-            animate="visible"
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.04 } },
-            }}
-          >
-            {filteredNotes.map((note) => (
-              <motion.div
-                key={note._id}
-                variants={{
-                  hidden: { opacity: 0, y: 8 },
-                  visible: { opacity: 1, y: 0 },
-                }}
+      {/* ── Notes list ─── */}
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] uppercase tracking-wider text-[#F0EDE6]/25 font-medium">
+              {activeFolderName ? `${activeFolderName}` : 'All Notes'}{' '}
+              {filteredNotes.length > 0 && `(${filteredNotes.length})`}
+            </p>
+            {activeFolderId && (
+              <button
+                onClick={() => handleSelectFolder(null)}
+                className="text-[10px] text-[#F0EDE6]/30 hover:text-[#4F6EF7] transition-colors"
               >
-                <NoteListItem
-                  id={note._id}
-                  title={note.title}
-                  updatedAt={note.updatedAt}
-                  onDelete={handleDeleteNote}
-                  onRename={handleRenameNote}
-                />
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
+                Show all
+              </button>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-4 h-4 border-2 border-[#4F6EF7]/30 border-t-[#4F6EF7] rounded-full animate-spin" />
+            </div>
+          ) : filteredNotes.length === 0 ? (
+            <p className="text-sm text-[#F0EDE6]/20 text-center py-6">
+              {search ? 'No notes match your search' : 'No notes yet'}
+            </p>
+          ) : (
+            <motion.div
+              className="flex flex-col gap-0.5"
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: {},
+                visible: { transition: { staggerChildren: 0.04 } },
+              }}
+            >
+              {filteredNotes.map((note) => (
+                <motion.div
+                  key={note._id}
+                  variants={{
+                    hidden: { opacity: 0, y: 8 },
+                    visible: { opacity: 1, y: 0 },
+                  }}
+                >
+                  <NoteListItem
+                    id={note._id}
+                    title={note.title}
+                    updatedAt={note.updatedAt}
+                    onDelete={handleDeleteNote}
+                    onRename={handleRenameNote}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
       </div>
 
       {/* ── Footer ─── */}
