@@ -11,7 +11,7 @@ import { useNoteStore } from '@/store/noteStore';
 import { useCanvas } from '@/hooks/useCanvas';
 
 export function TypingLayer() {
-  const { activeTool, activeColor } = useNoteStore();
+  const { activeTool, activeColor, viewportOffsetX, viewportOffsetY, viewportScale } = useNoteStore();
   const { canvasData, addTextBlock, updateTextBlock, removeTextBlock, finalizeTextBlock } = useCanvas();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -111,7 +111,11 @@ export function TypingLayer() {
     <div
       ref={layerRef}
       className="absolute inset-0 z-20"
-      style={{ pointerEvents }}
+      style={{ 
+        pointerEvents,
+        transform: `translate(${viewportOffsetX}px, ${viewportOffsetY}px) scale(${viewportScale})`,
+        transformOrigin: '0 0',
+      }}
       onClick={handleLayerClick}
       onMouseMove={handleDragMove}
       onMouseUp={handleDragEnd}

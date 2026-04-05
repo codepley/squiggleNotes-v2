@@ -13,8 +13,10 @@ export function DrawingLayer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
   const currentPointsRef = useRef<StrokePoint[]>([]);
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  const { activeTool, activeColor, strokeWidth } = useNoteStore();
+  const { activeTool, activeColor, strokeWidth, viewportOffsetX, viewportOffsetY, viewportScale, panViewport, setViewportScale } = useNoteStore();
   const { canvasData, addStroke, eraseStrokesInArea, finalizeErase, undo, redo } = useCanvas();
 
   // ─── Re-render all strokes onto the canvas ──────────────────────────────────
@@ -27,6 +29,11 @@ export function DrawingLayer() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (!canvasData) return;
+
+    // Apply viewport transform (pan + zoom)
+    ctx.save();
+    ctx.translate(viewportOffsetX, viewportOffsetY);
+    ctx.scale(viewportScale, viewportScale);
 
     for (const stroke of canvasData.strokes) {
       if (stroke.points.length < 2) continue;
@@ -58,7 +65,9 @@ export function DrawingLayer() {
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
-  }, [canvasData]);
+
+    ctx.restore();
+  }, [canvasData, viewportOffsetX, viewportOffsetY, viewportScale]);
 
   // Redraw whenever canvasData changes
   useEffect(() => {
@@ -90,7 +99,7 @@ export function DrawingLayer() {
     return () => resizeObserver.disconnect();
   }, [redrawAll]);
 
-  // ─── Keyboard shortcuts for undo/redo ───────────────────────────────────────
+  // ─── Keyboard shortcuts for undo/redo and wheel zoom ───────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+Z (Windows/Linux) or Cmd+Z (Mac) for undo
@@ -110,9 +119,24 @@ export function DrawingLayer() {
       }
     };
 
+    const handleWheel = (e: WheelEvent) => {
+      // Only zoom if Ctrl is held
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      
+      const delta = -e.deltaY > 0 ? 1.1 : 0.9; // Scroll up = zoom in
+      const newScale = viewportScale * delta;
+      setViewportScale(newScale);
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
+    canvasRef.current?.addEventListener('wheel', handleWheel, { passive: false });
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      canvasRef.current?.removeEventListener('wheel', handleWheel);
+    };
+  }, [undo, redo, viewportScale, setViewportScale]);
 
   // ─── Drawing: live stroke preview ───────────────────────────────────────────
   const drawLiveStroke = useCallback(
@@ -124,6 +148,11 @@ export function DrawingLayer() {
 
       // Redraw all saved strokes first, then overlay the live one
       redrawAll();
+
+      // Apply viewport transform for live stroke
+      ctx.save();
+      ctx.translate(viewportOffsetX, viewportOffsetY);
+      ctx.scale(viewportScale, viewportScale);
 
       ctx.beginPath();
       ctx.lineCap = 'round';
@@ -146,23 +175,41 @@ export function DrawingLayer() {
       }
       ctx.stroke();
       ctx.globalAlpha = 1;
+      ctx.restore();
     },
-    [activeTool, activeColor, strokeWidth, redrawAll],
+    [activeTool, activeColor, strokeWidth, redrawAll, viewportOffsetX, viewportOffsetY, viewportScale],
   );
 
   // ─── Pointer event handlers ─────────────────────────────────────────────────
   const getCanvasPoint = (e: React.PointerEvent): StrokePoint => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
+    
+    // Screen space to canvas space conversion accounting for viewport transform
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    
+    // Reverse the viewport transform
+    const canvasX = (screenX - viewportOffsetX) / viewportScale;
+    const canvasY = (screenY - viewportOffsetY) / viewportScale;
+    
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: canvasX,
+      y: canvasY,
       pressure: e.pressure || 0.5,
     };
   };
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      // Middle mouse button for panning
+      if (e.button === 1) {
+        e.preventDefault();
+        isPanningRef.current = true;
+        panStartRef.current = { x: e.clientX, y: e.clientY };
+        return;
+      }
+
       if (activeTool === 'text' || activeTool === 'review') return;
 
       isDrawingRef.current = true;
@@ -171,11 +218,20 @@ export function DrawingLayer() {
       // Capture pointer for smooth drawing even when leaving the canvas
       canvasRef.current?.setPointerCapture(e.pointerId);
     },
-    [activeTool],
+    [activeTool, getCanvasPoint],
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
+      // Handle panning
+      if (isPanningRef.current && panStartRef.current) {
+        const dx = e.clientX - panStartRef.current.x;
+        const dy = e.clientY - panStartRef.current.y;
+        panViewport(dx, dy);
+        panStartRef.current = { x: e.clientX, y: e.clientY };
+        return;
+      }
+
       if (!isDrawingRef.current) return;
       if (activeTool === 'text' || activeTool === 'review') return;
 
@@ -189,30 +245,39 @@ export function DrawingLayer() {
       currentPointsRef.current.push(point);
       drawLiveStroke(currentPointsRef.current);
     },
-    [activeTool, strokeWidth, eraseStrokesInArea, drawLiveStroke],
+    [activeTool, strokeWidth, eraseStrokesInArea, drawLiveStroke, getCanvasPoint, panViewport],
   );
 
-  const handlePointerUp = useCallback(() => {
-    if (!isDrawingRef.current) return;
-    isDrawingRef.current = false;
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (isPanningRef.current) {
+        isPanningRef.current = false;
+        panStartRef.current = null;
+        return;
+      }
 
-    if (activeTool === 'eraser') {
-      finalizeErase();
-      return;
-    }
+      if (!isDrawingRef.current) return;
+      isDrawingRef.current = false;
 
-    const points = currentPointsRef.current;
-    if (points.length < 2) return;
+      if (activeTool === 'eraser') {
+        finalizeErase();
+        return;
+      }
 
-    addStroke({
-      points,
-      color: activeColor,
-      width: strokeWidth,
-      tool: activeTool as 'pen' | 'highlighter',
-    });
+      const points = currentPointsRef.current;
+      if (points.length < 2) return;
 
-    currentPointsRef.current = [];
-  }, [activeTool, activeColor, strokeWidth, addStroke, finalizeErase]);
+      addStroke({
+        points,
+        color: activeColor,
+        width: strokeWidth,
+        tool: activeTool as 'pen' | 'highlighter',
+      });
+
+      currentPointsRef.current = [];
+    },
+    [activeTool, activeColor, strokeWidth, addStroke, finalizeErase],
+  );
 
   // ─── Determine cursor based on tool ─────────────────────────────────────────
   const getCursorClass = () => {

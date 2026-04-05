@@ -55,6 +55,11 @@ interface NoteState {
   undoStack: CanvasData[];
   redoStack: CanvasData[];
 
+  // Viewport transform (for infinite canvas)
+  viewportOffsetX: number;
+  viewportOffsetY: number;
+  viewportScale: number;
+
   // Audio
   isRecording: boolean;
   recordingElapsed: number; // seconds
@@ -79,6 +84,11 @@ interface NoteState {
   pushRedo: (data: CanvasData) => void;
   popRedo: () => CanvasData | null;
   clearRedo: () => void;
+
+  // Viewport actions
+  panViewport: (dx: number, dy: number) => void;
+  setViewportScale: (scale: number) => void;
+  resetViewport: () => void;
 
   setActiveTool: (tool: ActiveTool) => void;
   setActiveColor: (color: string) => void;
@@ -108,6 +118,11 @@ export const useNoteStore = create<NoteState>((set) => ({
   // Undo/Redo stacks
   undoStack: [],
   redoStack: [],
+
+  // Viewport transform (for infinite canvas)
+  viewportOffsetX: 0,
+  viewportOffsetY: 0,
+  viewportScale: 1,
 
   // Audio
   isRecording: false,
@@ -161,6 +176,23 @@ export const useNoteStore = create<NoteState>((set) => ({
   },
   clearRedo: () => set({ redoStack: [] }),
 
+  // Viewport actions for infinite canvas
+  panViewport: (dx, dy) =>
+    set((state) => ({
+      viewportOffsetX: state.viewportOffsetX + dx,
+      viewportOffsetY: state.viewportOffsetY + dy,
+    })),
+  setViewportScale: (scale) =>
+    set({
+      viewportScale: Math.max(0.1, Math.min(4, scale)), // Clamp between 0.1x and 4x
+    }),
+  resetViewport: () =>
+    set({
+      viewportOffsetX: 0,
+      viewportOffsetY: 0,
+      viewportScale: 1,
+    }),
+
   setActiveTool: (tool) => set({ activeTool: tool }),
   setActiveColor: (color) => set({ activeColor: color }),
   setStrokeWidth: (width) => set({ strokeWidth: width }),
@@ -185,5 +217,8 @@ export const useNoteStore = create<NoteState>((set) => ({
       pendingTimestamps: [],
       undoStack: [],
       redoStack: [],
+      viewportOffsetX: 0,
+      viewportOffsetY: 0,
+      viewportScale: 1,
     }),
 }));
