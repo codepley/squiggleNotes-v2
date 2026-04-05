@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { useNoteStore, type CanvasData } from '@/store/noteStore';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { DrawingLayer } from './DrawingLayer';
@@ -13,6 +14,7 @@ import { TypingLayer } from './TypingLayer';
 import { Toolbar } from './Toolbar';
 import { ReviewOverlay } from './ReviewOverlay';
 import { ContextPanel } from './ContextPanel';
+import { BoardPanel } from './BoardSelector';
 import { AudioRecorder } from '@/components/audio/AudioRecorder';
 import { AudioPlayback } from '@/components/audio/AudioPlayback';
 import { GenerateModal } from './GenerateModal';
@@ -47,6 +49,9 @@ export function NoteCanvas({
 
   // Generate modal state
   const [generateOpen, setGenerateOpen] = useState(false);
+
+  // Board panel collapse state
+  const [isBoardPanelCollapsed, setIsBoardPanelCollapsed] = useState(false);
 
   // Initialize store with note data
   useEffect(() => {
@@ -103,19 +108,45 @@ export function NoteCanvas({
   );
 
   return (
-    <div className="flex h-full flex-col">
-      {/* ── Title bar ─── */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2 bg-[#0E0E0F]">
-        <h1 className="text-lg font-medium text-[#F0EDE6]/90 truncate">
-          {initialTitle}
-        </h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setGenerateOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-[#4F6EF7]/10 text-[#4F6EF7] hover:bg-[#4F6EF7]/20 transition-colors"
-          >
-            🧠 Generate
-          </button>
+    <div className="flex h-full">
+      {/* ── Left sidebar: Boards ─── */}
+      <motion.div
+        initial={false}
+        animate={{ width: isBoardPanelCollapsed ? 0 : 224 }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="bg-[#0A0A0C] border-r border-white/[0.06] flex flex-col overflow-hidden"
+        style={{ minWidth: 0 }}
+      >
+        <BoardPanel />
+      </motion.div>
+
+      {/* Toggle button - always visible */}
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setIsBoardPanelCollapsed(!isBoardPanelCollapsed)}
+        className="w-10 h-10 flex items-center justify-center bg-white/[0.05] hover:bg-white/[0.1] text-[#F0EDE6]/60 hover:text-[#F0EDE6] transition-colors text-sm flex-shrink-0"
+        title={isBoardPanelCollapsed ? 'Expand boards' : 'Collapse boards'}
+      >
+        {isBoardPanelCollapsed ? '›' : '‹'}
+      </motion.button>
+
+      {/* ── Main canvas area ─── */}
+      <div className="flex-1 flex flex-col">
+        {/* ── Title bar ─── */}
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2 bg-[#0E0E0F]">
+          <h1 className="text-lg font-medium text-[#F0EDE6]/90 truncate">
+            {initialTitle}
+          </h1>
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setGenerateOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-[#4F6EF7]/10 text-[#4F6EF7] hover:bg-[#4F6EF7]/20 transition-colors"
+            >
+              🧠 Generate
+            </motion.button>
           {activeTool === 'review' && (
             <span className="text-xs text-[#4F6EF7] font-medium">Review Mode</span>
           )}
@@ -127,11 +158,11 @@ export function NoteCanvas({
               ? `${initialCanvasData.strokes.length} strokes · ${initialCanvasData.textBlocks.length} texts`
               : 'Empty canvas'}
           </span>
+          </div>
         </div>
-      </div>
 
-      {/* ── Canvas area ─── */}
-      <div className="relative flex-1 overflow-auto canvas-paper">
+        {/* ── Canvas area ─── */}
+        <div className="relative flex-1 overflow-auto canvas-paper">
         {/* Drawing canvas */}
         <DrawingLayer />
 
@@ -141,38 +172,39 @@ export function NoteCanvas({
         {/* Review mode overlay (clickable hit zones) */}
         <ReviewOverlay onElementTap={handleElementTap} />
 
-        {/* Context panel (slides up) */}
-        <ContextPanel
-          isOpen={contextOpen}
-          onClose={() => setContextOpen(false)}
-          audioUrl={currentAudioUrl ?? null}
-          audioOffset={contextInfo.audioOffset}
-          elementType={contextInfo.elementType}
-          elementContent={contextInfo.elementContent}
+          {/* Context panel (slides up) */}
+          <ContextPanel
+            isOpen={contextOpen}
+            onClose={() => setContextOpen(false)}
+            audioUrl={currentAudioUrl ?? null}
+            audioOffset={contextInfo.audioOffset}
+            elementType={contextInfo.elementType}
+            elementContent={contextInfo.elementContent}
+          />
+        </div>
+
+        {/* ── Bottom controls ─── */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2">
+          {/* Toolbar + Audio playback + Audio recorder side by side */}
+          <div className="flex items-center gap-2">
+            <Toolbar />
+            
+            {/* Audio playback (if audio exists and not in review with context panel) */}
+            {currentAudioUrl && !contextOpen && (
+              <AudioPlayback audioUrl={currentAudioUrl} />
+            )}
+            
+            <AudioRecorder noteId={noteId} />
+          </div>
+        </div>
+
+        {/* ── Generate modal ─── */}
+        <GenerateModal
+          isOpen={generateOpen}
+          onClose={() => setGenerateOpen(false)}
+          noteId={noteId}
         />
       </div>
-
-      {/* ── Bottom controls ─── */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2">
-        {/* Toolbar + Audio playback + Audio recorder side by side */}
-        <div className="flex items-center gap-2">
-          <Toolbar />
-          
-          {/* Audio playback (if audio exists and not in review with context panel) */}
-          {currentAudioUrl && !contextOpen && (
-            <AudioPlayback audioUrl={currentAudioUrl} />
-          )}
-          
-          <AudioRecorder noteId={noteId} />
-        </div>
-      </div>
-
-      {/* ── Generate modal ─── */}
-      <GenerateModal
-        isOpen={generateOpen}
-        onClose={() => setGenerateOpen(false)}
-        noteId={noteId}
-      />
     </div>
   );
 }
