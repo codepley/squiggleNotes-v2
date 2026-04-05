@@ -154,14 +154,15 @@ export function NoteCanvas({
 
       {/* ── Bottom controls ─── */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2">
-        {/* Audio playback (if audio exists and not in review with context panel) */}
-        {currentAudioUrl && !contextOpen && (
-          <AudioPlayback audioUrl={currentAudioUrl} />
-        )}
-
-        {/* Toolbar + Audio recorder side by side */}
+        {/* Toolbar + Audio playback + Audio recorder side by side */}
         <div className="flex items-center gap-2">
           <Toolbar />
+          
+          {/* Audio playback (if audio exists and not in review with context panel) */}
+          {currentAudioUrl && !contextOpen && (
+            <AudioPlayback audioUrl={currentAudioUrl} />
+          )}
+          
           <AudioRecorder noteId={noteId} />
         </div>
       </div>
