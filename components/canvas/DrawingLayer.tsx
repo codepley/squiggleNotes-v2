@@ -15,7 +15,7 @@ export function DrawingLayer() {
   const currentPointsRef = useRef<StrokePoint[]>([]);
 
   const { activeTool, activeColor, strokeWidth } = useNoteStore();
-  const { canvasData, addStroke, eraseStrokesInArea, undo, redo } = useCanvas();
+  const { canvasData, addStroke, eraseStrokesInArea, finalizeErase, undo, redo } = useCanvas();
 
   // ─── Re-render all strokes onto the canvas ──────────────────────────────────
   const redrawAll = useCallback(() => {
@@ -196,7 +196,10 @@ export function DrawingLayer() {
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
 
-    if (activeTool === 'eraser') return;
+    if (activeTool === 'eraser') {
+      finalizeErase();
+      return;
+    }
 
     const points = currentPointsRef.current;
     if (points.length < 2) return;
@@ -209,7 +212,7 @@ export function DrawingLayer() {
     });
 
     currentPointsRef.current = [];
-  }, [activeTool, activeColor, strokeWidth, addStroke]);
+  }, [activeTool, activeColor, strokeWidth, addStroke, finalizeErase]);
 
   // ─── Determine cursor based on tool ─────────────────────────────────────────
   const getCursorClass = () => {

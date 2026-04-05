@@ -12,7 +12,7 @@ import { useCanvas } from '@/hooks/useCanvas';
 
 export function TypingLayer() {
   const { activeTool, activeColor } = useNoteStore();
-  const { canvasData, addTextBlock, updateTextBlock, removeTextBlock } = useCanvas();
+  const { canvasData, addTextBlock, updateTextBlock, removeTextBlock, finalizeTextBlock } = useCanvas();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const dragStartRef = useRef<{ x: number; y: number; blockX: number; blockY: number } | null>(null);
@@ -92,12 +92,14 @@ export function TypingLayer() {
   const handleBlur = useCallback(
     (id: string, content: string) => {
       setEditingId(null);
+      // Finalize text edit for undo/redo
+      finalizeTextBlock(id);
       // Remove empty text blocks
       if (!content.trim()) {
         removeTextBlock(id);
       }
     },
-    [removeTextBlock],
+    [removeTextBlock, finalizeTextBlock],
   );
 
   const textBlocks = canvasData?.textBlocks ?? [];
