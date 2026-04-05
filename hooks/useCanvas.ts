@@ -5,71 +5,46 @@
  * Consumed by NoteCanvas and DrawingLayer.
  */
 
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useNoteStore, type CanvasData, type Stroke, type TextBlock } from '@/store/noteStore';
 import { nanoid } from 'nanoid';
-
-const MAX_UNDO_STACK = 50;
-const MAX_REDO_STACK = 50;
 
 function nanoid_simple(): string {
   return Math.random().toString(36).slice(2, 11);
 }
 
 export function useCanvas() {
-  const { canvasData, updateCanvasData, markDirty } = useNoteStore();
-  const undoStack = useRef<CanvasData[]>([]);
-  const redoStack = useRef<CanvasData[]>([]);
-  const lastSnapshotRef = useRef<CanvasData | null>(null);
-  
-  // Track state changes to update button UI
-  const [, setStackVersion] = useState(0);
-
-  const updateStackUI = useCallback(() => {
-    setStackVersion((v) => v + 1);
-  }, []);
+  const { canvasData, updateCanvasData, markDirty, undoStack, redoStack, pushUndo, popUndo, pushRedo, popRedo, clearRedo } = useNoteStore();
 
   const snapshot = useCallback(() => {
     const current = useNoteStore.getState().canvasData;
     if (!current) return;
     
-    // Avoid consecutive duplicate snapshots
-    if (lastSnapshotRef.current === current) return;
-    
-    lastSnapshotRef.current = current;
-    undoStack.current = [
-      ...undoStack.current.slice(-MAX_UNDO_STACK + 1),
-      current,
-    ];
-    redoStack.current = [];
-    updateStackUI();
-  }, [updateStackUI]);
+    pushUndo(current);
+    clearRedo();
+  }, [pushUndo, clearRedo]);
 
   const undo = useCallback(() => {
-    if (undoStack.current.length === 0) return;
-    const prev = undoStack.current.pop()!;
+    const prev = popUndo();
+    if (!prev) return;
+    
     const current = useNoteStore.getState().canvasData;
-    if (current) {
-      redoStack.current = [...redoStack.current.slice(-MAX_REDO_STACK + 1), current];
-    }
-    lastSnapshotRef.current = prev;
+    if (current) pushRedo(current);
+    
     updateCanvasData(() => prev);
     markDirty();
-    updateStackUI();
-  }, [updateCanvasData, markDirty, updateStackUI]);
+  }, [popUndo, pushRedo, updateCanvasData, markDirty]);
 
   const redo = useCallback(() => {
-    if (redoStack.current.length === 0) return;
-    const next = redoStack.current.pop()!;
+    const next = popRedo();
+    if (!next) return;
+    
     const current = useNoteStore.getState().canvasData;
-    if (current) {
-      undoStack.current = [...undoStack.current.slice(-MAX_UNDO_STACK + 1), current];
-    }
-    lastSnapshotRef.current = next;
+    if (current) pushUndo(current);
+    
     updateCanvasData(() => next);
     markDirty();
-    updateStackUI();
-  }, [updateCanvasData, markDirty, updateStackUI]);
+  }, [popRedo, pushUndo, updateCanvasData, markDirty]);
 
   const addStroke = useCallback(
     (stroke: Omit<Stroke, 'id'>) => {
@@ -163,15 +138,12 @@ export function useCanvas() {
     snapshot();
   }, [snapshot]);
 
-  const canUndo = undoStack.current.length > 0;
-  const canRedo = redoStack.current.length > 0;
-
   return {
     canvasData,
     undo,
     redo,
-    canUndo,
-    canRedo,
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
     addStroke,
     addTextBlock,
     updateTextBlock,
