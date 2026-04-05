@@ -2,7 +2,7 @@
 
 /**
  * /signup — Auth signup page stub.
- * This is currently mocked UI and will be integrated with NextAuth in step 11.5/6.
+ * This is currently mocked UI and will be integrated with NextAuth in a step 11.5/6.
  */
 
 import { useState } from 'react';
