@@ -1,38 +1,80 @@
 'use client';
 
 /**
- * NoteCanvas — orchestrates DrawingLayer + TypingLayer + Toolbar.
- * Manages mode switching and canvas initialization.
+ * NoteCanvas — orchestrates DrawingLayer + TypingLayer + Toolbar + Audio + Review.
+ * Manages mode switching, canvas initialization, audio, and context retrieval.
  */
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNoteStore, type CanvasData } from '@/store/noteStore';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { DrawingLayer } from './DrawingLayer';
 import { TypingLayer } from './TypingLayer';
 import { Toolbar } from './Toolbar';
+import { ReviewOverlay } from './ReviewOverlay';
+import { ContextPanel } from './ContextPanel';
+import { AudioRecorder } from '@/components/audio/AudioRecorder';
+import { AudioPlayback } from '@/components/audio/AudioPlayback';
+import { GenerateModal } from './GenerateModal';
 
 interface NoteCanvasProps {
   noteId: string;
   initialCanvasData: CanvasData | null;
   initialTitle: string;
+  initialAudioUrl?: string | null;
 }
 
-export function NoteCanvas({ noteId, initialCanvasData, initialTitle }: NoteCanvasProps) {
-  const { setActiveNoteId, setCanvasData, isDirty } = useNoteStore();
+export function NoteCanvas({
+  noteId,
+  initialCanvasData,
+  initialTitle,
+  initialAudioUrl,
+}: NoteCanvasProps) {
+  const { setActiveNoteId, setCanvasData, isDirty, audioUrl, setAudioUrl, activeTool } =
+    useNoteStore();
+
+  // Context panel state
+  const [contextOpen, setContextOpen] = useState(false);
+  const [contextInfo, setContextInfo] = useState<{
+    elementType: 'stroke' | 'text' | null;
+    elementContent: string | null;
+    audioOffset: number | null;
+  }>({ elementType: null, elementContent: null, audioOffset: null });
+
+  // Generate modal state
+  const [generateOpen, setGenerateOpen] = useState(false);
 
   // Initialize store with note data
   useEffect(() => {
     setActiveNoteId(noteId);
     setCanvasData(initialCanvasData ?? { strokes: [], textBlocks: [] });
+    if (initialAudioUrl) setAudioUrl(initialAudioUrl);
 
     return () => {
       setActiveNoteId(null);
+      setAudioUrl(null);
     };
-  }, [noteId, initialCanvasData, setActiveNoteId, setCanvasData]);
+  }, [noteId, initialCanvasData, initialAudioUrl, setActiveNoteId, setCanvasData, setAudioUrl]);
 
   // Enable auto-save
   useAutoSave();
+
+  const currentAudioUrl = audioUrl || initialAudioUrl;
+
+  // Handle element tap in review mode
+  const handleElementTap = useCallback(
+    (info: { elementType: 'stroke' | 'text'; elementId: string; content: string | null }) => {
+      // TODO: Look up TimestampLink for this element to get audioOffset
+      // For now, show panel with element info
+      setContextInfo({
+        elementType: info.elementType,
+        elementContent: info.content,
+        audioOffset: null, // will be populated when timestamp links are queried
+      });
+      setContextOpen(true);
+    },
+    [],
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -42,6 +84,15 @@ export function NoteCanvas({ noteId, initialCanvasData, initialTitle }: NoteCanv
           {initialTitle}
         </h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setGenerateOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-[#4F6EF7]/10 text-[#4F6EF7] hover:bg-[#4F6EF7]/20 transition-colors"
+          >
+            🧠 Generate
+          </button>
+          {activeTool === 'review' && (
+            <span className="text-xs text-[#4F6EF7] font-medium">Review Mode</span>
+          )}
           {isDirty && (
             <span className="text-xs text-[#F5A623]/60 animate-pulse">Unsaved</span>
           )}
@@ -60,12 +111,41 @@ export function NoteCanvas({ noteId, initialCanvasData, initialTitle }: NoteCanv
 
         {/* Text blocks overlay */}
         <TypingLayer />
+
+        {/* Review mode overlay (clickable hit zones) */}
+        <ReviewOverlay onElementTap={handleElementTap} />
+
+        {/* Context panel (slides up) */}
+        <ContextPanel
+          isOpen={contextOpen}
+          onClose={() => setContextOpen(false)}
+          audioUrl={currentAudioUrl ?? null}
+          audioOffset={contextInfo.audioOffset}
+          elementType={contextInfo.elementType}
+          elementContent={contextInfo.elementContent}
+        />
       </div>
 
-      {/* ── Floating toolbar ─── */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
-        <Toolbar />
+      {/* ── Bottom controls ─── */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2">
+        {/* Audio playback (if audio exists and not in review with context panel) */}
+        {currentAudioUrl && !contextOpen && (
+          <AudioPlayback audioUrl={currentAudioUrl} />
+        )}
+
+        {/* Toolbar + Audio recorder side by side */}
+        <div className="flex items-center gap-2">
+          <Toolbar />
+          <AudioRecorder noteId={noteId} />
+        </div>
       </div>
+
+      {/* ── Generate modal ─── */}
+      <GenerateModal
+        isOpen={generateOpen}
+        onClose={() => setGenerateOpen(false)}
+        noteId={noteId}
+      />
     </div>
   );
 }

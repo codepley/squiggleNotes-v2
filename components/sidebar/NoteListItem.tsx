@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * NoteListItem — note preview card with title, last edited time, and delete.
- * Used inside the Sidebar to list notes in the active folder.
+ * NoteListItem — note preview card with title, last edited time, rename, and delete.
+ * Uses <div> with role="button" to avoid nested <button> HTML violation.
  */
 
 import { motion } from 'framer-motion';
@@ -15,9 +15,10 @@ interface NoteListItemProps {
   title: string;
   updatedAt: string;
   onDelete: (id: string) => void;
+  onRename: (id: string, newTitle: string) => void;
 }
 
-export function NoteListItem({ id, title, updatedAt, onDelete }: NoteListItemProps) {
+export function NoteListItem({ id, title, updatedAt, onDelete, onRename }: NoteListItemProps) {
   const router = useRouter();
   const params = useParams();
   const isActive = params?.noteId === id;
@@ -41,14 +42,26 @@ export function NoteListItem({ id, title, updatedAt, onDelete }: NoteListItemPro
     [id, onDelete, showConfirm],
   );
 
-  // Format relative time
+  const handleRename = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const newTitle = prompt('Rename note:', title)?.trim();
+      if (newTitle && newTitle !== title) {
+        onRename(id, newTitle);
+      }
+    },
+    [id, title, onRename],
+  );
+
   const timeAgo = formatRelativeTime(updatedAt);
 
   return (
-    <motion.button
+    <motion.div
       onClick={handleClick}
+      role="button"
+      tabIndex={0}
       className={cn(
-        'group w-full text-left px-3 py-2.5 rounded-lg transition-colors relative',
+        'group w-full text-left px-3 py-2.5 rounded-lg transition-colors relative cursor-pointer',
         isActive
           ? 'bg-[#4F6EF7]/10 border border-[#4F6EF7]/20'
           : 'hover:bg-white/[0.04] border border-transparent',
@@ -69,11 +82,18 @@ export function NoteListItem({ id, title, updatedAt, onDelete }: NoteListItemPro
           <p className="text-[11px] text-[#F0EDE6]/30 mt-0.5">{timeAgo}</p>
         </div>
 
-        {/* Delete button */}
-        <motion.div
-          className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
-          whileTap={{ scale: 0.85 }}
-        >
+        {/* Action buttons */}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 flex-shrink-0 mt-0.5">
+          {/* Rename */}
+          <button
+            onClick={handleRename}
+            className="w-5 h-5 rounded flex items-center justify-center text-[10px] text-[#F0EDE6]/30 hover:text-[#4F6EF7] hover:bg-[#4F6EF7]/10 transition-colors"
+            title="Rename note"
+          >
+            ✎
+          </button>
+
+          {/* Delete */}
           <button
             onClick={handleDelete}
             className={cn(
@@ -86,9 +106,9 @@ export function NoteListItem({ id, title, updatedAt, onDelete }: NoteListItemPro
           >
             {showConfirm ? '!' : '×'}
           </button>
-        </motion.div>
+        </div>
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
 

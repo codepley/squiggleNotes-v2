@@ -23,6 +23,7 @@ const TOOLS: ToolDef[] = [
   { id: 'highlighter', label: 'Highlight', icon: '🖍️' },
   { id: 'eraser', label: 'Eraser', icon: '🧹' },
   { id: 'text', label: 'Text', icon: '𝐓' },
+  { id: 'review', label: 'Review', icon: '🔍' },
 ];
 
 const COLORS = [

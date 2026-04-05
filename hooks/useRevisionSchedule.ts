@@ -1,12 +1,13 @@
 'use client';
 
 /**
- * useRevisionSchedule — fetches due revision sessions and submits ratings.
+ * useRevisionSchedule — fetch due sessions, submit ratings.
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import type { GeneratedItem } from '@/lib/ai/generator';
 
-export interface RevisionSessionSummary {
+export interface DueSession {
   id: string;
   noteId: string;
   noteTitle: string;
@@ -17,57 +18,92 @@ export interface RevisionSessionSummary {
   easeFactor: number;
 }
 
-export type RevisionRating = 'again' | 'hard' | 'good' | 'easy';
-
-export interface UseRevisionScheduleReturn {
-  sessions: RevisionSessionSummary[];
-  isLoading: boolean;
-  error: string | null;
-  submitRating: (sessionId: string, contentId: string, rating: RevisionRating) => Promise<void>;
-  refresh: () => void;
+export interface RevisionCard extends GeneratedItem {
+  contentId: string;
+  sessionId: string;
+  noteTitle: string;
 }
 
-export function useRevisionSchedule(): UseRevisionScheduleReturn {
-  const [sessions, setSessions] = useState<RevisionSessionSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+export function useRevisionSchedule() {
+  const [dueSessions, setDueSessions] = useState<DueSession[]>([]);
+  const [cards, setCards] = useState<RevisionCard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSessions = useCallback(async () => {
+  const fetchSchedule = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+
     try {
       const res = await fetch('/api/revision/schedule');
-      if (!res.ok) throw new Error('Failed to load revision schedule');
-      const { data } = await res.json();
-      setSessions(data);
+      const { data, error: apiError } = await res.json();
+
+      if (apiError) {
+        setError(apiError);
+        setIsLoading(false);
+        return;
+      }
+
+      setDueSessions(data ?? []);
+
+      const allCards: RevisionCard[] = [];
+
+      for (const session of (data ?? []) as DueSession[]) {
+        try {
+          const contentRes = await fetch(`/api/notes/${session.noteId}/content`);
+          const { data: content } = await contentRes.json();
+
+          if (content && Array.isArray(content)) {
+            for (const item of content) {
+              allCards.push({
+                contentId: item._id,
+                sessionId: session.id,
+                noteTitle: session.noteTitle,
+                type: item.type,
+                question: item.payload?.question ?? '',
+                answer: item.payload?.answer ?? '',
+                options: item.payload?.options ?? null,
+                blankedSentence: item.payload?.blankedSentence ?? null,
+              });
+            }
+          }
+        } catch {
+          // Skip
+        }
+      }
+
+      // Shuffle
+      for (let i = allCards.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allCards[i], allCards[j]] = [allCards[j], allCards[i]];
+      }
+
+      setCards(allCards);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError((err as Error).message);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
-
   const submitRating = useCallback(
-    async (sessionId: string, contentId: string, rating: RevisionRating) => {
-      const res = await fetch(`/api/revision/session`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, contentId, rating }),
-      });
-      if (!res.ok) throw new Error('Failed to submit rating');
+    async (sessionId: string, contentId: string, rating: 'again' | 'hard' | 'good' | 'easy') => {
+      try {
+        await fetch('/api/revision/session', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, contentId, rating }),
+        });
+      } catch (err) {
+        console.error('Failed to submit rating:', err);
+      }
     },
     [],
   );
 
-  return {
-    sessions,
-    isLoading,
-    error,
-    submitRating,
-    refresh: fetchSessions,
-  };
+  useEffect(() => {
+    fetchSchedule();
+  }, [fetchSchedule]);
+
+  return { dueSessions, cards, isLoading, error, submitRating, refresh: fetchSchedule };
 }
