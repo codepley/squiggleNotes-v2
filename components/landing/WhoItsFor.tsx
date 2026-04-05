@@ -14,7 +14,7 @@ export function WhoItsFor() {
             className="text-3xl md:text-5xl font-normal text-[#F0EDE6]"
             style={{ fontFamily: 'var(--font-display), serif' }}
           >
-            For students who <em className="italic text-[#FF453A]">can&aprost afford</em> to forget.
+            For students who <em className="italic text-[#F5A623]">can't afford</em> to forget.
           </motion.h2>
         </div>
 

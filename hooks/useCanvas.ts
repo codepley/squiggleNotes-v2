@@ -5,45 +5,46 @@
  * Consumed by NoteCanvas and DrawingLayer.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import { useNoteStore, type CanvasData, type Stroke, type TextBlock } from '@/store/noteStore';
 import { nanoid } from 'nanoid';
-
-const MAX_UNDO_STACK = 50;
 
 function nanoid_simple(): string {
   return Math.random().toString(36).slice(2, 11);
 }
 
 export function useCanvas() {
-  const { canvasData, updateCanvasData, markDirty } = useNoteStore();
-  const undoStack = useRef<CanvasData[]>([]);
-  const redoStack = useRef<CanvasData[]>([]);
+  const { canvasData, updateCanvasData, markDirty, undoStack, redoStack, pushUndo, popUndo, pushRedo, popRedo, clearRedo } = useNoteStore();
 
   const snapshot = useCallback(() => {
-    if (!canvasData) return;
-    undoStack.current = [
-      ...undoStack.current.slice(-MAX_UNDO_STACK + 1),
-      canvasData,
-    ];
-    redoStack.current = [];
-  }, [canvasData]);
+    const current = useNoteStore.getState().canvasData;
+    if (!current) return;
+    
+    pushUndo(current);
+    clearRedo();
+  }, [pushUndo, clearRedo]);
 
   const undo = useCallback(() => {
-    if (undoStack.current.length === 0) return;
-    const prev = undoStack.current.pop()!;
-    if (canvasData) redoStack.current.push(canvasData);
+    const prev = popUndo();
+    if (!prev) return;
+    
+    const current = useNoteStore.getState().canvasData;
+    if (current) pushRedo(current);
+    
     updateCanvasData(() => prev);
     markDirty();
-  }, [canvasData, updateCanvasData, markDirty]);
+  }, [popUndo, pushRedo, updateCanvasData, markDirty]);
 
   const redo = useCallback(() => {
-    if (redoStack.current.length === 0) return;
-    const next = redoStack.current.pop()!;
-    if (canvasData) undoStack.current.push(canvasData);
+    const next = popRedo();
+    if (!next) return;
+    
+    const current = useNoteStore.getState().canvasData;
+    if (current) pushUndo(current);
+    
     updateCanvasData(() => next);
     markDirty();
-  }, [canvasData, updateCanvasData, markDirty]);
+  }, [popRedo, pushUndo, updateCanvasData, markDirty]);
 
   const addStroke = useCallback(
     (stroke: Omit<Stroke, 'id'>) => {
@@ -86,6 +87,7 @@ export function useCanvas() {
 
   const updateTextBlock = useCallback(
     (id: string, content: string) => {
+      // Don't snapshot on every keystroke - only when text is finalized
       updateCanvasData((prev) => ({
         ...prev,
         textBlocks: prev.textBlocks.map((b) => (b.id === id ? { ...b, content } : b)),
@@ -93,6 +95,14 @@ export function useCanvas() {
       markDirty();
     },
     [updateCanvasData, markDirty],
+  );
+
+  // Snapshot text after editing is complete (blur event)
+  const finalizeTextBlock = useCallback(
+    (id: string) => {
+      snapshot();
+    },
+    [snapshot],
   );
 
   const removeTextBlock = useCallback(
@@ -107,6 +117,7 @@ export function useCanvas() {
     [snapshot, updateCanvasData, markDirty],
   );
 
+  // Batch erase snapshots - don't snapshot on every pixel
   const eraseStrokesInArea = useCallback(
     (x: number, y: number, radius: number) => {
       updateCanvasData((prev) => ({
@@ -122,19 +133,23 @@ export function useCanvas() {
     [updateCanvasData, markDirty],
   );
 
-  const canUndo = undoStack.current.length > 0;
-  const canRedo = redoStack.current.length > 0;
+  // Snapshot after erasing is complete
+  const finalizeErase = useCallback(() => {
+    snapshot();
+  }, [snapshot]);
 
   return {
     canvasData,
     undo,
     redo,
-    canUndo,
-    canRedo,
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
     addStroke,
     addTextBlock,
     updateTextBlock,
+    finalizeTextBlock,
     removeTextBlock,
     eraseStrokesInArea,
+    finalizeErase,
   };
 }

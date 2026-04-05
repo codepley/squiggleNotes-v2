@@ -24,7 +24,7 @@ export function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          className="text-2xl font-bold flex items-center gap-1 group"
+          className="text-3xl font-bold flex items-center gap-1 group"
           style={{ fontFamily: 'var(--font-caveat), cursive' }}
         >
           <span className="text-[#F0EDE6] group-hover:opacity-80 transition-opacity">Squiggle</span>
